@@ -3,13 +3,18 @@
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
+import { CustomerDrawer } from "@/features/customers/components/CustomerDrawer";
+import { FollowUpDrawer } from "@/features/follow-ups/components/FollowUpDrawer";
+import { OpportunityDrawer } from "@/features/opportunities/components/OpportunityDrawer";
+import { LogInteractionDrawer } from "@/features/interactions/components/LogInteractionDrawer";
+import { useRouter } from "next/navigation";
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
-  // Global quick action drawer trigger state (used across screens)
+  const router = useRouter();
   const [activeAction, setActiveAction] = useState<
     "call" | "followup" | "opportunity" | "customer" | null
   >(null);
@@ -26,6 +31,29 @@ export function AppShell({ children }: AppShellProps) {
           {children}
         </main>
       </div>
+
+      {/* Global Quick Action Drawers */}
+      <CustomerDrawer
+        open={activeAction === "customer"}
+        onClose={() => setActiveAction(null)}
+        onCustomerCreated={(id) => router.push(`/customers/${id}`)}
+      />
+
+      <FollowUpDrawer
+        open={activeAction === "followup"}
+        onClose={() => setActiveAction(null)}
+      />
+
+      <OpportunityDrawer
+        open={activeAction === "opportunity"}
+        onClose={() => setActiveAction(null)}
+        onSuccess={() => router.push("/opportunities")}
+      />
+
+      <LogInteractionDrawer
+        open={activeAction === "call"}
+        onClose={() => setActiveAction(null)}
+      />
     </div>
   );
 }
