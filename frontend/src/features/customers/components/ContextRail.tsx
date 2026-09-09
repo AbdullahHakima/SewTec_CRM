@@ -4,7 +4,7 @@ import React from "react";
 import { Customer, FollowUp } from "@/types/crm";
 import { formatEgp } from "@/lib/currency/format-currency";
 import { formatBranchDateTime, isOverdue } from "@/lib/dates/branch-time";
-import { AlertCircle, Calendar, Cpu, Check, Clock, Building, MapPin, Phone } from "lucide-react";
+import { AlertCircle, Calendar, Cpu, Check, Clock, Building } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ContextRailProps {

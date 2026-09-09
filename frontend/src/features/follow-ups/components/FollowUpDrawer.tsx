@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { X, CalendarPlus, Check } from "lucide-react";
 import { FollowUpChannel } from "@/types/crm";
 import { useCustomers } from "@/features/customers/hooks/use-customers";
@@ -21,7 +21,8 @@ export function FollowUpDrawer({
 }: FollowUpDrawerProps) {
   const { customers } = useCustomers();
 
-  const [customerId, setCustomerId] = useState(defaultCustomerId || "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const customerId = selectedCustomerId || defaultCustomerId || customers[0]?.id || "";
   const [channel, setChannel] = useState<FollowUpChannel>("call");
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState("11:00");
@@ -29,14 +30,6 @@ export function FollowUpDrawer({
   const [assignedRepId, setAssignedRepId] = useState("rep_01");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (defaultCustomerId) {
-      setCustomerId(defaultCustomerId);
-    } else if (customers.length > 0 && !customerId) {
-      setCustomerId(customers[0].id);
-    }
-  }, [defaultCustomerId, customers, customerId]);
 
   if (!open) return null;
 
@@ -127,7 +120,7 @@ export function FollowUpDrawer({
             </label>
             <select
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
               className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
             >
               {customers.map((c) => (

@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import Link from "next/link";
 import { FollowUp } from "@/types/crm";
-import { formatBranchTime, isOverdue } from "@/lib/dates/branch-time";
+import { formatBranchTime } from "@/lib/dates/branch-time";
 import {
   PhoneCall,
   Building2,
@@ -16,7 +16,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { parseISO, getHours } from "date-fns";
-import { cn } from "@/lib/utils";
 
 interface ActionScheduleProps {
   followUps: FollowUp[];
@@ -64,7 +63,7 @@ export function ActionSchedule({
   };
 
   const handlePhoneClick = (phone: string) => {
-    window.location.href = `tel:${phone.replace(/[^0-9]/g, "")}`;
+    window.open(`tel:${phone.replace(/[^0-9]/g, "")}`, "_self");
   };
 
   const handleWhatsAppClick = (phone: string, topic: string) => {

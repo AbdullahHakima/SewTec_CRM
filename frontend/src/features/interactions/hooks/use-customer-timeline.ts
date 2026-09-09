@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore, useMemo } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
-import { Activity, Interaction } from "@/types/crm";
 
 export function useCustomerTimeline(customerId: string) {
   const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot);

@@ -2,26 +2,30 @@
 
 import { useSyncExternalStore, useMemo } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
-import { Customer, CustomerType } from "@/types/crm";
+import { Customer } from "@/types/crm";
 import { CustomerQuery } from "@/features/customers/repositories/customer.repository";
 import { isCustomerStale } from "@/lib/dates/branch-time";
 
 export function useCustomers(query?: CustomerQuery) {
   const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot);
+  const type = query?.type;
+  const assignedRepId = query?.assignedRepId;
+  const search = query?.search;
+  const isStale = query?.isStale;
 
   const customers = useMemo(() => {
     let list = state.customers;
 
-    if (query?.type && query.type !== "all") {
-      list = list.filter((c) => c.type === query.type);
+    if (type && type !== "all") {
+      list = list.filter((c) => c.type === type);
     }
 
-    if (query?.assignedRepId && query.assignedRepId !== "all") {
-      list = list.filter((c) => c.assignedRepId === query.assignedRepId);
+    if (assignedRepId && assignedRepId !== "all") {
+      list = list.filter((c) => c.assignedRepId === assignedRepId);
     }
 
-    if (query?.search && query.search.trim()) {
-      const q = query.search.trim().toLowerCase();
+    if (search && search.trim()) {
+      const q = search.trim().toLowerCase();
       list = list.filter(
         (c) =>
           c.name.toLowerCase().includes(q) ||
@@ -32,12 +36,12 @@ export function useCustomers(query?: CustomerQuery) {
       );
     }
 
-    if (query?.isStale) {
+    if (isStale) {
       list = list.filter((c) => isCustomerStale(c.lastContactAt, c.isVip));
     }
 
     return list;
-  }, [state.customers, query?.type, query?.assignedRepId, query?.search, query?.isStale]);
+  }, [state.customers, type, assignedRepId, search, isStale]);
 
   return {
     customers,

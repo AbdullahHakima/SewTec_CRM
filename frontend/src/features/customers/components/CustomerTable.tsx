@@ -32,14 +32,14 @@ export function CustomerTable({
 
   const handlePhoneClick = (e: React.MouseEvent, phone: string) => {
     e.stopPropagation();
-    window.location.href = `tel:${phone.replace(/[^0-9]/g, "")}`;
+    window.open(`tel:${phone.replace(/[^0-9]/g, "")}`, "_self");
   };
 
   const handleWhatsAppClick = (e: React.MouseEvent, phone: string, name: string) => {
     e.stopPropagation();
     const cleanNumber = phone.replace(/[^0-9]/g, "");
     const egNumber = cleanNumber.startsWith("0") ? `2${cleanNumber}` : cleanNumber;
-    const message = encodeURIComponent(`السلام عليكم، بخصوص ماكينات SewTec للخياطة — فرع المحلة`);
+    const message = encodeURIComponent(`السلام عليكم أ. ${name}، بخصوص ماكينات SewTec للخياطة — فرع المحلة`);
     window.open(`https://wa.me/${egNumber}?text=${message}`, "_blank");
   };
 

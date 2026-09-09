@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { FollowUp, InteractionOutcome, FollowUpChannel } from "@/types/crm";
 import { FollowUpService } from "@/features/follow-ups/services/follow-up.service";
 import { getTomorrowMorningIso } from "@/lib/dates/branch-time";
-import { X, Check, PhoneOff, Calendar, AlertCircle } from "lucide-react";
+import { X, Check, PhoneOff, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FollowUpCompletionModalProps {

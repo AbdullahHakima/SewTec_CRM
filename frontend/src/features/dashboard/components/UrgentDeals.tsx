@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Opportunity, Customer } from "@/types/crm";
 import { formatEgp } from "@/lib/currency/format-currency";
 import { getDaysInStage, getDaysSinceContact } from "@/lib/dates/branch-time";
-import { TrendingUp, AlertTriangle, ArrowLeft, Building2, Cpu } from "lucide-react";
+import { TrendingUp, AlertTriangle, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UrgentDealsProps {

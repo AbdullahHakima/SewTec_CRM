@@ -2,33 +2,36 @@
 
 import { useSyncExternalStore, useMemo } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
-import { Opportunity, OpportunityStage } from "@/types/crm";
+import { OpportunityStage } from "@/types/crm";
 import { OpportunityQuery } from "@/features/opportunities/repositories/opportunity.repository";
 
 export function useOpportunities(query?: OpportunityQuery) {
   const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot);
+  const customerId = query?.customerId;
+  const assignedRepId = query?.assignedRepId;
+  const stage = query?.stage;
 
   const opportunities = useMemo(() => {
     let list = state.opportunities;
 
-    if (query?.customerId) {
-      list = list.filter((op) => op.customerId === query.customerId);
+    if (customerId) {
+      list = list.filter((op) => op.customerId === customerId);
     }
 
-    if (query?.assignedRepId && query.assignedRepId !== "all") {
-      list = list.filter((op) => op.assignedRepId === query.assignedRepId);
+    if (assignedRepId && assignedRepId !== "all") {
+      list = list.filter((op) => op.assignedRepId === assignedRepId);
     }
 
-    if (query?.stage) {
-      if (query.stage === "active") {
+    if (stage) {
+      if (stage === "active") {
         list = list.filter((op) => op.stage !== "won" && op.stage !== "lost");
-      } else if (query.stage !== "all") {
-        list = list.filter((op) => op.stage === query.stage);
+      } else if (stage !== "all") {
+        list = list.filter((op) => op.stage === stage);
       }
     }
 
     return list;
-  }, [state.opportunities, query?.customerId, query?.assignedRepId, query?.stage]);
+  }, [state.opportunities, customerId, assignedRepId, stage]);
 
   const stats = useMemo(() => {
     const active = state.opportunities.filter(

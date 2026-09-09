@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { Opportunity, OpportunityStage } from "@/types/crm";
 import { opportunityRepository } from "@/infrastructure/local-storage/local-storage-opportunity.repository";
-import { formatEgp } from "@/lib/currency/format-currency";
 import { formatBranchDate, getDaysInStage } from "@/lib/dates/branch-time";
-import { X, Check, TrendingUp, User, Building2, Calendar, FileSpreadsheet, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { X, Check, TrendingUp, AlertTriangle } from "lucide-react";
 
 interface OpportunityInspectorDrawerProps {
   opportunity: Opportunity | null;
@@ -22,20 +20,20 @@ export function OpportunityInspectorDrawer({
   onClose,
   onSuccess,
 }: OpportunityInspectorDrawerProps) {
+  const [prevOpportunityId, setPrevOpportunityId] = useState<string | null>(null);
   const [stage, setStage] = useState<OpportunityStage>("new");
   const [estimatedValue, setEstimatedValue] = useState<number | undefined>(undefined);
   const [notes, setNotes] = useState("");
   const [stageNote, setStageNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (opportunity) {
-      setStage(opportunity.stage);
-      setEstimatedValue(opportunity.estimatedValue);
-      setNotes(opportunity.notes || "");
-      setStageNote("");
-    }
-  }, [opportunity]);
+  if (opportunity && opportunity.id !== prevOpportunityId) {
+    setPrevOpportunityId(opportunity.id);
+    setStage(opportunity.stage);
+    setEstimatedValue(opportunity.estimatedValue);
+    setNotes(opportunity.notes || "");
+    setStageNote("");
+  }
 
   if (!open || !opportunity) return null;
 

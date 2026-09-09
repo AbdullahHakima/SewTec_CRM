@@ -7,7 +7,7 @@ import { OpportunityInspectorDrawer } from "./OpportunityInspectorDrawer";
 import { OpportunityDrawer } from "./OpportunityDrawer";
 import { Opportunity } from "@/types/crm";
 import { formatEgp } from "@/lib/currency/format-currency";
-import { TrendingUp, Plus, CheckCircle, XCircle, LayoutGrid, List } from "lucide-react";
+import { TrendingUp, Plus, CheckCircle, XCircle, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function OpportunitiesScreen() {

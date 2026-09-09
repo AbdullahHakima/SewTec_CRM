@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   TrendingUp,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatEgp } from "@/lib/currency/format-currency";
 
 interface ActivityTimelineProps {

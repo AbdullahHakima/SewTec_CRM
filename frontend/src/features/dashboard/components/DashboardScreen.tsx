@@ -9,7 +9,7 @@ import { ActionSchedule } from "./ActionSchedule";
 import { UrgentDeals } from "./UrgentDeals";
 import { FollowUpCompletionModal } from "@/features/follow-ups/components/FollowUpCompletionModal";
 import { FollowUp } from "@/types/crm";
-import { Sparkles, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { formatBranchDate } from "@/lib/dates/branch-time";
 
 export function DashboardScreen() {

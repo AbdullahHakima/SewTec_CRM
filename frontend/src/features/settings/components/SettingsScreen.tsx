@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Settings, Building2, Users, Database, RotateCcw, Clock, ShieldCheck } from "lucide-react";
+import { Settings, Building2, Users, Database, RotateCcw, Clock } from "lucide-react";
 import { ResetDemoDialog } from "./ResetDemoDialog";
 
 export function SettingsScreen() {

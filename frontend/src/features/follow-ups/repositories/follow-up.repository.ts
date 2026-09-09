@@ -1,4 +1,4 @@
-import { FollowUp, FollowUpChannel, FollowUpStatus, InteractionOutcome } from "@/types/crm";
+import { FollowUp, FollowUpChannel, InteractionOutcome } from "@/types/crm";
 
 export interface FollowUpQuery {
   view?: "today" | "overdue" | "upcoming" | "completed";

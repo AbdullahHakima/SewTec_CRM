@@ -2,7 +2,7 @@
 
 import React from "react";
 import { CustomerType } from "@/types/crm";
-import { Search, Filter, AlertTriangle } from "lucide-react";
+import { Search, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CustomerFiltersProps {

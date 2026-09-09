@@ -2,27 +2,29 @@
 
 import { useSyncExternalStore, useMemo } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
-import { FollowUp } from "@/types/crm";
 import { FollowUpQuery } from "@/features/follow-ups/repositories/follow-up.repository";
 import { isOverdue } from "@/lib/dates/branch-time";
 import { isToday } from "date-fns";
 
 export function useFollowUps(query?: FollowUpQuery) {
   const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot);
+  const customerId = query?.customerId;
+  const assignedRepId = query?.assignedRepId;
+  const view = query?.view;
 
   const followUps = useMemo(() => {
     let list = state.followUps;
 
-    if (query?.customerId) {
-      list = list.filter((f) => f.customerId === query.customerId);
+    if (customerId) {
+      list = list.filter((f) => f.customerId === customerId);
     }
 
-    if (query?.assignedRepId && query.assignedRepId !== "all") {
-      list = list.filter((f) => f.assignedRepId === query.assignedRepId);
+    if (assignedRepId && assignedRepId !== "all") {
+      list = list.filter((f) => f.assignedRepId === assignedRepId);
     }
 
-    if (query?.view) {
-      switch (query.view) {
+    if (view) {
+      switch (view) {
         case "today":
           list = list.filter(
             (f) => f.status === "scheduled" && isToday(new Date(f.scheduledAt))
@@ -50,11 +52,11 @@ export function useFollowUps(query?: FollowUpQuery) {
       }
     }
 
-    return list.sort(
+    return [...list].sort(
       (a, b) =>
         new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
     );
-  }, [state.followUps, query?.customerId, query?.assignedRepId, query?.view]);
+  }, [state.followUps, customerId, assignedRepId, view]);
 
   const counts = useMemo(() => {
     const today = state.followUps.filter(

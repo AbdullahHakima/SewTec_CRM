@@ -5,8 +5,8 @@ import { useCustomers } from "@/features/customers/hooks/use-customers";
 import { CustomerFilters } from "./CustomerFilters";
 import { CustomerTable } from "./CustomerTable";
 import { CustomerDrawer } from "./CustomerDrawer";
-import { CustomerType, Customer } from "@/types/crm";
-import { Plus, Users, Download } from "lucide-react";
+import { CustomerType } from "@/types/crm";
+import { Plus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function CustomersScreen() {

@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useSyncExternalStore } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
+const emptySubscribe = () => () => {};
 
+export default function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     crmStore.initClient();
-    setMounted(true);
   }, []);
+
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   if (!mounted) {
     return (

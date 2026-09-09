@@ -9,7 +9,8 @@ import { CustomerHeader } from "./CustomerHeader";
 import { ContextRail } from "./ContextRail";
 import { QuickLogger } from "@/features/interactions/components/QuickLogger";
 import { ActivityTimeline } from "@/features/interactions/components/ActivityTimeline";
-import { FollowUp, Opportunity } from "@/types/crm";
+import { FollowUpDrawer } from "@/features/follow-ups/components/FollowUpDrawer";
+import { FollowUp } from "@/types/crm";
 import { Clock, TrendingUp, CheckSquare, Sparkles } from "lucide-react";
 import { formatEgp } from "@/lib/currency/format-currency";
 import { formatBranchDate, getDaysInStage } from "@/lib/dates/branch-time";
@@ -27,7 +28,7 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
   const { opportunities } = useOpportunities({ customerId });
 
   const [activeTab, setActiveTab] = useState<"timeline" | "opportunities" | "followups">("timeline");
-  const [showAddFollowUpModal, setShowAddFollowUpModal] = useState(false);
+  const [showFollowUpDrawer, setShowFollowUpDrawer] = useState(false);
 
   if (isLoading || !customer) {
     return (
@@ -54,7 +55,7 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
       <CustomerHeader
         customer={customer}
         onLogInteraction={() => setActiveTab("timeline")}
-        onAddFollowUp={() => setShowAddFollowUpModal(true)}
+        onAddFollowUp={() => setShowFollowUpDrawer(true)}
       />
 
       {/* Main Split: Right Context Rail (35%) vs Left Workspace (65%) */}
@@ -75,7 +76,7 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
             customerId={customer.id}
             customerName={customer.name}
             repName={customer.assignedRepName}
-            onFollowUpPrompt={() => setShowAddFollowUpModal(true)}
+            onFollowUpPrompt={() => setShowFollowUpDrawer(true)}
           />
 
           {/* Workspace Tabs Navigation */}
@@ -236,6 +237,12 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
           )}
         </div>
       </div>
+
+      <FollowUpDrawer
+        open={showFollowUpDrawer}
+        defaultCustomerId={customer.id}
+        onClose={() => setShowFollowUpDrawer(false)}
+      />
     </div>
   );
 }

@@ -12,8 +12,6 @@ import {
   Check,
   Phone,
   AlertTriangle,
-  Calendar,
-  MoreVertical,
 } from "lucide-react";
 import { followUpRepository } from "@/infrastructure/local-storage/local-storage-follow-up.repository";
 import { addDays } from "date-fns";

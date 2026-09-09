@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { X, PhoneCall, Check } from "lucide-react";
 import { InteractionChannel, InteractionOutcome, FollowUpChannel } from "@/types/crm";
 import { useCustomers } from "@/features/customers/hooks/use-customers";
 import { crmStore } from "@/lib/storage/crm-store";
-import { getTomorrowMorningIso } from "@/lib/dates/branch-time";
 
 interface LogInteractionDrawerProps {
   open: boolean;
@@ -22,7 +21,8 @@ export function LogInteractionDrawer({
 }: LogInteractionDrawerProps) {
   const { customers } = useCustomers();
 
-  const [customerId, setCustomerId] = useState(defaultCustomerId || "");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const customerId = selectedCustomerId || defaultCustomerId || customers[0]?.id || "";
   const [channel, setChannel] = useState<InteractionChannel>("call");
   const [outcome, setOutcome] = useState<InteractionOutcome>("interested");
   const [summary, setSummary] = useState("");
@@ -37,14 +37,6 @@ export function LogInteractionDrawer({
   const [nextTopic, setNextTopic] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (defaultCustomerId) {
-      setCustomerId(defaultCustomerId);
-    } else if (customers.length > 0 && !customerId) {
-      setCustomerId(customers[0].id);
-    }
-  }, [defaultCustomerId, customers, customerId]);
 
   if (!open) return null;
 
@@ -189,7 +181,7 @@ export function LogInteractionDrawer({
             </label>
             <select
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
+              onChange={(e) => setSelectedCustomerId(e.target.value)}
               className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
             >
               {customers.map((c) => (
@@ -283,6 +275,20 @@ export function LogInteractionDrawer({
                       className="w-full rounded border border-slate-300 bg-white p-1.5 text-xs text-slate-800 font-mono"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-500 block mb-0.5">قناة المتابعة</span>
+                  <select
+                    value={nextChannel}
+                    onChange={(e) => setNextChannel(e.target.value as FollowUpChannel)}
+                    className="w-full rounded border border-slate-300 bg-white p-1.5 text-xs text-slate-800"
+                  >
+                    <option value="call">اتصال هاتفي (Call)</option>
+                    <option value="visit">زيارة ميدانية (Visit)</option>
+                    <option value="whatsapp">رسالة واتساب (WhatsApp)</option>
+                    <option value="meeting">اجتماع مقر (Meeting)</option>
+                  </select>
                 </div>
 
                 <div>
