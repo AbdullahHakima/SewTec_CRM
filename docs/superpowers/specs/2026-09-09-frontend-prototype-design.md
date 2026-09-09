@@ -2,7 +2,8 @@
 
 **Date:** 2026-09-09  
 **Branch Context:** El Mahalla El Kubra (Garment manufacturing & industrial sewing equipment)  
-**Status:** Approved for Implementation Planning  
+**Timezone:** `Africa/Cairo`  
+**Status:** Frozen & Approved for Implementation Planning  
 
 ---
 
@@ -16,7 +17,7 @@ Rather than starting from database tables, APIs, or abstract Clean Architecture,
 - Looking up factory owners and workshop managers by phone number or machine model in seconds.
 - Logging interactions in under 15 seconds without losing UI context.
 
-The prototype is built with **Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Table, React Hook Form, Zod, and Lucide Icons**. It runs entirely in the browser using an atomic **LocalStorage Mock Repository** with realistic, deterministic El Mahalla demo data, structured so that swapping to an ASP.NET Core backend later requires zero UI refactoring.
+The prototype is built with **Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, TanStack Table, React Hook Form, Zod, and Lucide Icons**. It runs in the browser using an atomic **`CrmStore` reactive bridge with LocalStorage persistence** and realistic, deterministic El Mahalla demo data. The architecture guarantees that transitioning to an ASP.NET Core backend later requires **minimal, localized UI changes**.
 
 ---
 
@@ -32,6 +33,7 @@ The prototype is built with **Next.js (App Router), TypeScript, Tailwind CSS, sh
 ┌────────────────────────────────────────────────────────────────────────┐
 │               Feature Hooks & Application Services                     │
 │         (useCustomers, useFollowUps, useOpportunities, etc.)           │
+│   • Subscribes reactively via React useSyncExternalStore               │
 │   • Orchestrates multi-entity business actions                         │
 │   • Manages optimistic UI updates and validation                       │
 └───────────────────────────────────┬────────────────────────────────────┘
@@ -40,38 +42,58 @@ The prototype is built with **Next.js (App Router), TypeScript, Tailwind CSS, sh
 ┌────────────────────────────────────────────────────────────────────────┐
 │                 Domain Repository Interfaces                           │
 │   (ICustomerRepository, IFollowUpRepository, IOpportunityRepository)   │
-│   • UI-driven minimal contracts (getAll, getById, create, update)      │
+│   • Minimal async UI-driven contracts returning Promise<T>             │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
                   ┌─────────────────┴─────────────────┐
                   ▼                                   ▼
 ┌───────────────────────────────────┐ ┌──────────────────────────────────┐
 │   LocalStorageRepository (NOW)    │ │      HttpRepository (LATER)     │
-│ • Reads/writes atomic CrmState    │ │ • Calls ASP.NET Core REST API    │
-│ • Zero network latency in demos   │ │ • TanStack Query caching         │
-│ • Deterministic El Mahalla seed   │ └──────────────────────────────────┘
+│ • Reads/mutates reactive CrmStore │ │ • Calls ASP.NET Core REST API    │
+│ • Persists atomic CrmState        │ │ • TanStack Query caching         │
+│ • Zero network latency in demos   │ └──────────────────────────────────┘
 └───────────────────────────────────┘
 ```
 
 ### 2.1 State Segregation Rules
-1. **Persistent Business State**: Stored in a single atomic root object in `localStorage` (`CrmState`).
+1. **Persistent Business State**: Stored in a single atomic root object in `localStorage` (`CrmState`), managed reactively via `CrmStore`.
 2. **Temporary UI State**: Component-level React state (`isOpen`, `activeTab`, `hoveredRow`, form inputs).
 3. **URL & Navigation State**: Managed via Next.js search parameters (`?type=factory`, `?view=today`, `?stage=quotation`) ensuring back-button support and shareable views.
 
-### 2.2 Atomic LocalStorage Mock Store
-To guarantee data consistency without building a pseudo-relational engine, the store maintains one root state object:
-```ts
-interface CrmState {
-  version: number;
-  customers: Customer[];
-  interactions: Interaction[];
-  followUps: FollowUp[];
-  opportunities: Opportunity[];
-  activities: Activity[];
-  products: Product[];
-}
+### 2.2 Reactive `CrmStore` Bridge (`useSyncExternalStore`)
+Because `localStorage` is not natively reactive across React components, a lightweight in-memory store coordinates changes:
+```text
+React Hooks (useCustomers, useFollowUps, etc.)
+     │
+     ▼ (subscribe via useSyncExternalStore)
+CrmStore
+├── getSnapshot(): CrmState
+├── subscribe(listener: () => void): () => void
+├── update(mutator: (draft: CrmState) => void): void
+├── reset(): void
+└── persist(): void (debounced write to localStorage)
 ```
-Multi-entity actions (e.g. completing a follow-up, creating an interaction, updating customer `lastContactAt`, and scheduling the next follow-up) execute as a single in-memory state mutation followed by an atomic write.
+- Repositories mutate domain state by invoking `CrmStore.update()`.
+- When an action modifies multiple entities (e.g. completing a follow-up, updating customer `lastContactAt`, and scheduling the next follow-up), `CrmStore.update()` updates them in-memory and flushes an atomic state to `localStorage`.
+- All subscribed components (Dashboard counters, Customer 360 timeline, and Follow-up lists) re-render immediately and synchronously without manual page refreshes or heavy React Context trees.
+
+### 2.3 SSR Boundary & Hydration Strategy
+LocalStorage is browser-only. Next.js App Router pages define explicit client boundaries to avoid hydration mismatches:
+```text
+app/page.tsx               → <DashboardScreen />     ("use client")
+app/customers/page.tsx     → <CustomersScreen />     ("use client")
+app/customers/[id]/page.tsx→ <Customer360Screen />   ("use client")
+app/follow-ups/page.tsx    → <FollowUpsScreen />     ("use client")
+app/opportunities/page.tsx → <OpportunitiesScreen /> ("use client")
+```
+An `app/providers.tsx` root component mounts on the client and executes hydration:
+```text
+Client Mount
+    ↓
+Check localStorage for existing CrmState
+ ├── Compatible state found? → Hydrate CrmStore
+ └── Missing or outdated?    → Seed fixed El Mahalla demo dataset
+```
 
 ---
 
@@ -101,6 +123,16 @@ Multi-entity actions (e.g. completing a follow-up, creating an interaction, upda
   * Phone numbers: IBM Plex Sans Arabic with `dir="ltr"` and `unicode-bidi: isolate` (e.g., `010-0000-1122`).
   * Technical identifiers (machine models, serial numbers, quote IDs): Monospace with `dir="ltr"` (e.g., `HK2900ASS`, `JACK A4B`, `Q-2026-0041`).
 * **Directionality**: Document root is strictly `dir="rtl"`. In RTL layout, the sidebar sits on the **right edge**, and the main content expands towards the **left**.
+
+### 3.3 Date & Time Semantics (`Africa/Cairo`)
+To eliminate time drift, DST discrepancies, and timezone ambiguities:
+* **Persisted Format**: Standard ISO 8601 UTC strings (`2026-09-10T08:30:00.000Z`).
+* **Calculation Timezone**: Strictly calculated relative to Egypt standard time (`Africa/Cairo`).
+* **Centralized Helpers** in `lib/dates/`:
+  * `branch-time.ts`: Retrieves current Cairo date/time for branch comparisons.
+  * `is-overdue.ts`: Compares scheduled time against Cairo current time.
+  * `format-date.ts`: Egyptian Arabic formatting via `date-fns/locale/ar-EG` (e.g., `الأربعاء، 9 سبتمبر`).
+  * `relative-date.ts`: Human-scannable labels (`اليوم`, `أمس`, `منذ 4 أيام`, `⚠ منذ 21 يوماً`).
 
 ---
 
@@ -179,7 +211,13 @@ The definitive source of truth for a customer relationship.
     * *Next Action Alert Card*: Displays upcoming or overdue follow-up with inline `[✓ إنجاز]` or `[تأجيل]`.
     * *Facility Metadata*: Legal structure, production capacity, full address, technical contact person.
     * *Financial Metrics*: Distinct cards for `إجمالي المبيعات` (Lifetime sales) and `قيمة الفرص المفتوحة` (Active pipeline).
-    * *Installed Machine Fleet*: Detailed table of client-owned sewing machines with serial numbers, installation year, and service history.
+    * *Installed Machine Fleet (V1 Scope)*: Clean inventory of machines owned:
+      * Model (e.g. `JACK A4`, `SIRUBA 747K`)
+      * Quantity
+      * Serial Number (where applicable)
+      * Purchase Year
+      * Purchased from SewTec? (Boolean badge)
+      *(Note: Detailed maintenance logs, warranty tickets, and spare parts are deferred to after-sales phase).*
   * **Main Workspace (~65% on the Left in RTL)**:
     * *Lightweight Quick Logger*: Top input box allowing instant note entry, channel pill selection (📞, 🏢, 💬, 📝), and save button, followed by an optional prompt to schedule the next follow-up.
     * *Tabbed Views*:
@@ -240,9 +278,10 @@ To maintain user flow without full-page reloads, actions open right-sliding draw
 
 ---
 
-## 7. Deterministic Demo Dataset & Tested Journeys
+## 7. Deterministic Demo Dataset & Acceptance Journeys
 
 ### 7.1 Realistic Seed Data (Safely Fictionalized)
+All seed data utilizes `branchId: "mahalla"` to safeguard future multi-branch extensions while fictionalizing identities safely:
 * **مصنع النور للملابس الجاهزة (`cust_01`)**:
   * VIP Factory, Industrial Zone, Mahalla. Contact: الحاج محمود الشناوي (`010-0000-1122`).
   * Fleet: 5× `JACK A4` (2023), 2× `SIRUBA 747K` (2022). Lifetime Sales: 385,000 ج.م.
@@ -259,7 +298,8 @@ To maintain user flow without full-page reloads, actions open right-sliding draw
 * **أحمد حسنين الكردي (`cust_05`)**:
   * Individual Tailor, Abu Radi (`010-0000-7788`).
 
-### 7.2 Tested Demo Journeys
+### 7.2 Six Acceptance Journeys (V1 Integration Scenarios)
+These six workflows represent the core acceptance criteria for the implementation:
 1. **Journey 1: Morning Triage (Dashboard)**: View 3 overdue tasks → Click `[✓ إنجاز]` on Al-Nour call → Select `[مهتم 👍]` → Schedule visit for Sunday → Counters update.
 2. **Journey 2: Instant Global Search (`Ctrl + K`)**: Type `010-00` or `HK2900` → Grouped results appear → Press Enter → Lands directly on Customer 360.
 3. **Journey 3: Customer 360 Inspection & Inline Logger**: Inspect installed fleet in Context Rail → Write note in Quick Logger → Click Save → Note prepends to Timeline immediately.
@@ -276,6 +316,7 @@ d:/SewTec_CRM/
 ├── frontend/
 │   ├── app/
 │   │   ├── layout.tsx              # HTML dir="rtl", IBM Plex Sans Arabic font, TopBar & Sidebar Shell
+│   │   ├── providers.tsx           # Client hydration & CrmStore initialization
 │   │   ├── page.tsx                # Dashboard screen (Today's action feed + KPIs)
 │   │   ├── customers/
 │   │   │   ├── page.tsx            # Customers directory (TanStack table)
@@ -295,17 +336,24 @@ d:/SewTec_CRM/
 │   │
 │   ├── features/
 │   │   ├── customers/              # CustomerTable, CustomerHeader, FleetList, CustomerDrawer, hooks, services
+│   │   │   └── repositories/       # ICustomerRepository interface
 │   │   ├── follow-ups/             # FollowUpCard, CompletionModal, FollowUpDrawer, hooks, services
+│   │   │   └── repositories/       # IFollowUpRepository interface
 │   │   ├── opportunities/          # KanbanBoard, KanbanColumn, OpportunityCard, InspectorDrawer, hooks, services
+│   │   │   └── repositories/       # IOpportunityRepository interface
 │   │   ├── dashboard/              # ActionSchedule, UrgentDeals, StatCards
 │   │   └── interactions/           # QuickLogger, ActivityTimeline, TimelineItem
+│   │
+│   ├── infrastructure/             # Concrete repository implementations
+│   │   ├── local-storage/          # LocalStorageCustomerRepository, LocalStorageFollowUpRepository, etc.
+│   │   └── http/                   # Future ASP.NET Core fetch implementations
 │   │
 │   ├── data/
 │   │   └── demo/                   # Deterministic seed data (customers, products, opportunities, followUps)
 │   │
 │   ├── lib/
-│   │   ├── storage/                # LocalStorage single root-state manager (CrmState)
-│   │   ├── dates/                  # date-fns Arabic helpers
+│   │   ├── storage/                # CrmStore reactive store (useSyncExternalStore bridge + localStorage)
+│   │   ├── dates/                  # branch-time, format-date, is-overdue, relative-date (Africa/Cairo)
 │   │   ├── currency/               # Tabular EGP currency formatters
 │   │   └── utils.ts
 │   │
