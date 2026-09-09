@@ -63,7 +63,7 @@ export interface Opportunity {
 export type FollowUpStatus = "scheduled" | "completed" | "missed" | "cancelled";
 export type FollowUpChannel = "call" | "visit" | "whatsapp" | "email";
 
-export type InteractionChannel = "call" | "visit" | "whatsapp" | "note";
+export type InteractionChannel = "call" | "visit" | "whatsapp" | "email" | "note";
 export type InteractionOutcome =
   | "interested"
   | "quotation_requested"
