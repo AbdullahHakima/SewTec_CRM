@@ -1,0 +1,25 @@
+﻿.tools/
+**/bin/
+**/obj/
+**/publish/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/*.bak
+**/*.preflight.json
+**/*.upgrade.json
+artifacts/
+**/test-results/
+**/playwright-report/
+**/.env.local
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+
+# Application secrets & configurations
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.example.json
+!**/appsettings.*.example.json

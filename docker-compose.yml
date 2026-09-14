@@ -1,0 +1,36 @@
+﻿version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sewtec_backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5018:5018"
+    volumes:
+      - crm_data:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/sewtec_crm.db
+      - Jwt__Key=${SEWTEC_JWT_KEY:?Set a random signing secret of at least 32 bytes}
+      - AllowedHosts=${SEWTEC_ALLOWED_HOSTS:?Set the public API host name}
+      - Demo__Enabled=false
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=/api
+        - BACKEND_INTERNAL_URL=http://backend:5018
+    container_name: sewtec_frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  crm_data:
