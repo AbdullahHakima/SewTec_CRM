@@ -33,7 +33,7 @@ export function FollowUpCard({ followUp, onComplete }: FollowUpCardProps) {
       case "visit":
         return { label: "زيارة ميدانية", icon: Building2, color: "text-purple-600 bg-purple-50" };
       case "whatsapp":
-        return { label: "واتساب", icon: MessageCircle, color: "text-green-600 bg-green-50" };
+        return { label: "واتساب", icon: MessageCircle, color: "text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/50" };
       default:
         return { label: "متابعة", icon: Clock, color: "text-slate-600 bg-slate-50" };
     }
@@ -111,13 +111,13 @@ export function FollowUpCard({ followUp, onComplete }: FollowUpCardProps) {
       </div>
 
       {/* Footer: Phone Shortcuts + Main Actions */}
-      <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs">
         {/* Contact shortcuts */}
         <div className="flex items-center gap-1.5">
           <button
             onClick={handlePhoneClick}
             title="اتصال هاتفي"
-            className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-slate-700 font-mono text-[11px] hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-slate-100 px-3 py-2 text-slate-700 font-mono text-xs hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
             dir="ltr"
           >
             <Phone className="h-3 w-3" />
@@ -140,9 +140,10 @@ export function FollowUpCard({ followUp, onComplete }: FollowUpCardProps) {
               <div className="relative">
                 <button
                   onClick={() => setRescheduleOpen(!rescheduleOpen)}
-                  className="rounded border border-slate-200 bg-white px-2.5 py-1 text-slate-600 hover:bg-slate-50 text-xs transition-colors"
+                  aria-expanded={rescheduleOpen}
+                  className="whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:bg-slate-50 text-xs transition-colors"
                 >
-                  تأجيل ⏱
+                  تأجيل
                 </button>
 
                 {rescheduleOpen && (
@@ -178,7 +179,7 @@ export function FollowUpCard({ followUp, onComplete }: FollowUpCardProps) {
               {/* Complete action */}
               <button
                 onClick={() => onComplete(followUp)}
-                className="flex items-center gap-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 font-bold text-xs shadow-2xs transition-colors"
+                className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 font-bold text-xs shadow-2xs transition-colors"
               >
                 <Check className="h-3.5 w-3.5" />
                 <span>إنجاز المتابعة</span>
@@ -186,7 +187,7 @@ export function FollowUpCard({ followUp, onComplete }: FollowUpCardProps) {
             </>
           ) : (
             <span className="rounded bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 font-bold text-xs">
-              مكتملة ✓ ({followUp.outcome || "تمت"})
+              مكتملة ({followUp.outcome || "تمت"})
             </span>
           )}
         </div>

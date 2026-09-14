@@ -1,0 +1,72 @@
+/* Shared semantic surfaces for the CRM and portalled Radix components. */
+.dark {
+  color-scheme: dark;
+  --color-background: #121316;
+  --color-foreground: #f1f1f3;
+  --color-card: #1b1d21;
+  --color-card-foreground: #f1f1f3;
+  --color-popover: #23252b;
+  --color-popover-foreground: #f1f1f3;
+  --color-muted: #25272d;
+  --color-muted-foreground: #a4a6af;
+  --color-border: #363840;
+  --color-input: #41434c;
+  --color-accent: #30323a;
+  --color-accent-foreground: #fafafa;
+  --color-secondary: #292b32;
+  --color-secondary-foreground: #dedee3;
+  --color-primary: #dc2626;
+}
+.dark body, .dark .crm-shell { background: #121316; color: #f1f1f3; }
+.dark .crm-topbar { background: #1b1d21f0; border-color: #363840; }
+.dark .surface-card, .dark .metric-card { background: #1b1d21; border-color: #363840; }
+.dark .metric-alert { background: #26161b; border-color: #7f1d1d; }
+.dark .metric-icon { background: #2d3038; color: #e2e4ea; }
+.dark .metric-card:hover { border-color: #585c6a; }
+
+/* Data tables in dark mode */
+.dark .workspace table thead { background: #212329; border-bottom: 1px solid #363840; }
+.dark .workspace table th { color: #f1f1f3; font-weight: 600; }
+.dark .workspace table tbody tr:hover { background: #24272f; }
+.dark .workspace table td { border-bottom: 1px solid #282a32; }
+
+/* Modals & Forms in dark mode */
+.dark .crm-modal { color: #f1f1f3; }
+.dark input, .dark select, .dark textarea {
+  background-color: #1b1d21;
+  color: #f1f1f3;
+  border-color: #363840;
+}
+.dark input::placeholder, .dark textarea::placeholder {
+  color: #8c8f9b;
+}
+
+/* Background overrides */
+.dark :is(.bg-white, .bg-white/95, .bg-white/80) { background-color: #1b1d21; }
+.dark :is(.bg-slate-50, .bg-stone-50, .bg-zinc-50) { background-color: #23252b; }
+.dark :is(.bg-slate-100, .bg-stone-100, .bg-zinc-100) { background-color: #2b2d35; }
+.dark :is(.bg-slate-200, .bg-stone-200) { background-color: #363840; }
+
+/* Text overrides */
+.dark :is(.text-slate-900, .text-slate-800, .text-zinc-900, .text-zinc-800) { color: #f1f1f3; }
+.dark :is(.text-slate-700, .text-zinc-700, .text-stone-700) { color: #d2d3da; }
+.dark :is(.text-slate-600, .text-zinc-600, .text-stone-600) { color: #b8bac5; }
+.dark :is(.text-slate-500, .text-zinc-500) { color: #9da0aa; }
+.dark :is(.text-slate-400, .text-zinc-400) { color: #828590; }
+
+/* Borders */
+.dark :is(.border-slate-100, .border-slate-200, .border-slate-300, .border-stone-100, .border-stone-200, .border-stone-300, .border-zinc-200) {
+  border-color: #363840;
+}
+
+
+/* Comprehensive opacity background overrides in dark mode */
+.dark :is([class*="bg-slate-50/"], [class*="bg-stone-50/"], [class*="bg-zinc-50/"]) { background-color: #23252b !important; }
+.dark :is([class*="bg-slate-100/"], [class*="bg-stone-100/"], [class*="bg-zinc-100/"]) { background-color: #2b2d35 !important; }
+.dark :is([class*="bg-slate-200/"], [class*="bg-stone-200/"]) { background-color: #363840 !important; }
+.dark :is([class*="bg-white/40"], [class*="bg-white/50"], [class*="bg-white/60"], [class*="bg-white/70"], [class*="bg-white/80"]) { background-color: #1b1d21 !important; }
+
+/* Drawers container in dark mode */
+.dark .crm-modal > div { background-color: #1b1d21 !important; color: #f1f1f3; border-color: #363840 !important; }
+.dark .crm-modal header, .dark .crm-modal [class*="border-b"] { border-color: #363840 !important; }
+.dark .crm-modal [class*="border-t"] { border-color: #363840 !important; }

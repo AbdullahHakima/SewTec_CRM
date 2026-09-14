@@ -199,7 +199,7 @@ async function runAcceptanceJourneys() {
   }
   const taskToFail = scheduledTasks[0];
 
-  const result = FollowUpService.completeFollowUp({
+  const result = await FollowUpService.completeFollowUp({
     followUpId: taskToFail.id,
     outcome: "no_answer",
     outcomeNote: "الرقم يرن دون إجابة - إعادة الاتصال غداً صباحاً",

@@ -6,6 +6,7 @@ import {
   InteractionOutcome,
 } from "@/types/crm";
 import { getTomorrowMorningIso } from "@/lib/dates/branch-time";
+import { apiClient } from "@/infrastructure/http/api-client";
 
 export interface CompleteFollowUpParams {
   followUpId: string;
@@ -20,11 +21,17 @@ export interface CompleteFollowUpParams {
 }
 
 export class FollowUpService {
-  static completeFollowUp(params: CompleteFollowUpParams): {
+  static async completeFollowUp(params: CompleteFollowUpParams): Promise<{
     followUp: FollowUp;
     interaction: Interaction;
     nextFollowUp?: FollowUp;
-  } {
+  }> {
+    if (typeof window !== "undefined") {
+      const result = await apiClient.post<{followUp: FollowUp; interaction: Interaction; nextFollowUp?: FollowUp}>(`/follow-ups/${params.followUpId}/complete`, params);
+      await crmStore.syncWithBackend();
+      await crmStore.refreshCustomer(result.followUp.customerId);
+      return result;
+    }
     const now = new Date().toISOString();
     let completedFollowUp: FollowUp | null = null;
     let createdInteraction: Interaction | null = null;
@@ -86,7 +93,6 @@ export class FollowUpService {
       }
 
       // 5. Handle Next Follow-Up
-      // If explicit next follow-up provided OR if outcome is "no_answer" (default retry)
       let nextSchedule = params.nextFollowUp;
       if (!nextSchedule && params.outcome === "no_answer") {
         nextSchedule = {
@@ -124,6 +130,8 @@ export class FollowUpService {
     if (!completedFollowUp || !createdInteraction) {
       throw new Error("Failed to complete follow up");
     }
+
+    // Sync to backend asynchronously if online & authenticated
 
     return {
       followUp: completedFollowUp,

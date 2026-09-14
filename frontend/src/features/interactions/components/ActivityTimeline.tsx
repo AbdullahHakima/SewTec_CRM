@@ -11,8 +11,11 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   TrendingUp,
+  Clock,
 } from "lucide-react";
 import { formatEgp } from "@/lib/currency/format-currency";
+import { EmptyState } from "@/components/ui/empty-state";
+import { cn } from "@/lib/utils";
 
 interface ActivityTimelineProps {
   activities: Activity[];
@@ -21,87 +24,115 @@ interface ActivityTimelineProps {
 export function ActivityTimeline({ activities }: ActivityTimelineProps) {
   if (activities.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-slate-400 text-xs">
-        <FileText className="h-6 w-6 mx-auto mb-2 text-slate-300" />
-        <p className="font-semibold text-slate-600">لا يوجد سجل تواصل حتى الآن</p>
-        <p className="mt-0.5">استخدم مربع التسجيل السريع أعلاه لإضافة أول تواصل</p>
-      </div>
+      <EmptyState
+        icon={Clock}
+        variant="timeline"
+        badge="الخط الزمني للعميل"
+        title="لا يوجد سجل تواصل حتى الآن"
+        description="استخدم نموذج التسجيل السريع أعلاه لتوثيق أول مكالمة أو زيارة أو رسالة وبدء سجل النشاط."
+      />
     );
   }
 
-  const getIcon = (type: string, channel?: string) => {
+  const getNodeConfig = (type: string, channel?: string) => {
     if (type === "quotation") {
-      return <FileSpreadsheet className="h-4 w-4 text-indigo-600" />;
+      return {
+        icon: <FileSpreadsheet className="h-4 w-4 text-indigo-600" />,
+        border: "border-indigo-200 bg-indigo-50/80 shadow-indigo-100",
+      };
     }
     if (type === "followup_completed") {
-      return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+      return {
+        icon: <CheckCircle2 className="h-4 w-4 text-emerald-600" />,
+        border: "border-emerald-200 bg-emerald-50/80 shadow-emerald-100",
+      };
     }
     if (type === "stage_change") {
-      return <TrendingUp className="h-4 w-4 text-amber-600" />;
+      return {
+        icon: <TrendingUp className="h-4 w-4 text-amber-600" />,
+        border: "border-amber-200 bg-amber-50/80 shadow-amber-100",
+      };
     }
     if (channel === "call") {
-      return <PhoneCall className="h-4 w-4 text-blue-600" />;
+      return {
+        icon: <PhoneCall className="h-4 w-4 text-blue-600" />,
+        border: "border-blue-200 bg-blue-50/80 shadow-blue-100",
+      };
     }
     if (channel === "visit") {
-      return <Building2 className="h-4 w-4 text-purple-600" />;
+      return {
+        icon: <Building2 className="h-4 w-4 text-purple-600" />,
+        border: "border-purple-200 bg-purple-50/80 shadow-purple-100",
+      };
     }
     if (channel === "whatsapp") {
-      return <MessageCircle className="h-4 w-4 text-green-600" />;
+      return {
+        icon: <MessageCircle className="h-4 w-4 text-emerald-600" />,
+        border: "border-emerald-200 bg-emerald-50/80 shadow-emerald-100",
+      };
     }
-    return <FileText className="h-4 w-4 text-slate-600" />;
+    return {
+      icon: <FileText className="h-4 w-4 text-zinc-600" />,
+      border: "border-stone-200 bg-stone-50 shadow-stone-100",
+    };
   };
 
   return (
     <div className="space-y-4">
-      <div className="relative border-r-2 border-slate-200 mr-3 pr-5 space-y-6">
+      <div className="relative border-r-2 border-stone-200 mr-3 pr-6 space-y-5">
         {activities.map((act) => {
-          const icon = getIcon(act.type, act.metadata?.channel);
+          const node = getNodeConfig(act.type, act.metadata?.channel);
 
           return (
             <div key={act.id} className="relative group">
-              {/* Bullet Node */}
-              <div className="absolute -right-[27px] top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white border-2 border-slate-300 shadow-xs">
-                {icon}
+              {/* Bullet Node with colored badge */}
+              <div
+                className={cn(
+                  "absolute -right-[33px] top-2 flex h-7 w-7 items-center justify-center rounded-xl border shadow-sm transition-transform duration-200 group-hover:scale-110",
+                  node.border
+                )}
+              >
+                {node.icon}
               </div>
 
-              {/* Event Content */}
-              <div className="rounded-lg border border-slate-200 bg-white p-3.5 shadow-2xs hover:border-slate-300 transition-colors">
-                <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100 mb-2">
+              {/* Event Content Card */}
+              <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-2xs hover:border-stone-300 hover:shadow-xs transition-all">
+                <div className="flex items-center justify-between gap-2 pb-2 border-b border-stone-100 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-xs text-slate-900">
+                    <span className="font-bold text-xs text-zinc-900">
                       {act.title}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-zinc-400 bg-stone-50 px-2 py-0.5 rounded-full border border-stone-100">
                       بواسطة {act.performedBy}
                     </span>
                   </div>
                   <span
-                    className="text-[11px] text-slate-400 tabular-nums shrink-0"
+                    className="text-[11px] text-zinc-400 tabular-nums shrink-0 font-medium"
                     title={formatBranchDateTime(act.occurredAt)}
                   >
                     {formatBranchRelative(act.occurredAt)}
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-700 leading-relaxed">
+                <p className="text-xs text-zinc-700 leading-relaxed">
                   {act.description}
                 </p>
 
-                {/* Metadata Pills */}
+                {/* Dense Metadata Pills */}
                 {act.metadata && (
-                  <div className="flex items-center gap-2 flex-wrap mt-2.5 pt-2 border-t border-slate-100 text-[11px]">
+                  <div className="flex items-center gap-2 flex-wrap mt-3 pt-2.5 border-t border-stone-100 text-[11px]">
                     {act.metadata.quotationRef && (
-                      <span className="inline-flex items-center gap-1 rounded bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-indigo-700 font-mono font-bold" dir="ltr">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50/80 border border-indigo-200/80 px-2 py-0.5 text-indigo-700 font-mono font-bold text-[10px]" dir="ltr">
                         عرض: {act.metadata.quotationRef}
                       </span>
                     )}
                     {act.metadata.machineModel && (
-                      <span className="inline-flex items-center gap-1 rounded bg-slate-100 border border-slate-200 px-2 py-0.5 text-slate-700 font-mono font-semibold" dir="ltr">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 border border-stone-200 px-2 py-0.5 text-zinc-700 font-mono font-semibold text-[10px]" dir="ltr">
                         {act.metadata.machineModel}
                       </span>
                     )}
                     {act.metadata.amount && (
-                      <span className="inline-flex items-center gap-1 rounded bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-emerald-700 font-bold tabular-nums">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50/80 border border-emerald-200/80 px-2.5 py-0.5 text-emerald-700 font-bold tabular-nums text-[10px]">
                         {formatEgp(act.metadata.amount)}
                       </span>
                     )}

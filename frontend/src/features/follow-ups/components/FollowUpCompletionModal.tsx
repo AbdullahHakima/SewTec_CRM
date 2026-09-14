@@ -1,10 +1,12 @@
 "use client";
+import { branchDateTimeToIso } from "@/lib/dates/branch-time";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 
 import React, { useState } from "react";
 import { FollowUp, InteractionOutcome, FollowUpChannel } from "@/types/crm";
 import { FollowUpService } from "@/features/follow-ups/services/follow-up.service";
 import { getTomorrowMorningIso } from "@/lib/dates/branch-time";
-import { X, Check, PhoneOff, Calendar } from "lucide-react";
+import { X, Check, PhoneOff, Calendar, ThumbsUp, FileText, Clock, PhoneMissed, Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FollowUpCompletionModalProps {
@@ -36,12 +38,12 @@ export function FollowUpCompletionModal({
 
   if (!followUp) return null;
 
-  const outcomeChips: { key: InteractionOutcome; label: string; icon?: string }[] = [
-    { key: "interested", label: "مهتم ومستمر بالنقاش", icon: "👍" },
-    { key: "quotation_requested", label: "طلب عرض أسعار رسمي", icon: "📄" },
-    { key: "needs_time", label: "يحتاج وقتاً للتفكير", icon: "⏳" },
-    { key: "no_answer", label: "لم يرد على الاتصال", icon: "📵" },
-    { key: "not_interested", label: "غير مهتم حالياً", icon: "✕" },
+  const outcomeChips: { key: InteractionOutcome; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { key: "interested", label: "مهتم ومستمر بالنقاش", icon: ThumbsUp },
+    { key: "quotation_requested", label: "طلب عرض أسعار رسمي", icon: FileText },
+    { key: "needs_time", label: "يحتاج وقتاً للتفكير", icon: Clock },
+    { key: "no_answer", label: "لم يرد على الاتصال", icon: PhoneMissed },
+    { key: "not_interested", label: "غير مهتم حالياً", icon: Ban },
   ];
 
   const lossReasons = [
@@ -52,7 +54,7 @@ export function FollowUpCompletionModal({
     "سبب آخر",
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
 
@@ -68,13 +70,13 @@ export function FollowUpCompletionModal({
         };
       } else if (outcome !== "not_interested" && scheduleNext && nextDate) {
         nextFollowUpPayload = {
-          scheduledAt: new Date(`${nextDate}T${nextTime}:00`).toISOString(),
+          scheduledAt: branchDateTimeToIso(nextDate, nextTime),
           channel: nextChannel,
           topic: nextTopic.trim() || `متابعة لاحقة مع ${followUp.customerName}`,
         };
       }
 
-      FollowUpService.completeFollowUp({
+      await FollowUpService.completeFollowUp({
         followUpId: followUp.id,
         outcome,
         outcomeNote: note.trim() || undefined,
@@ -92,7 +94,7 @@ export function FollowUpCompletionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+    <ModalOverlay label="إنجاز المتابعة" onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/70">
@@ -130,11 +132,11 @@ export function FollowUpCompletionModal({
                     className={cn(
                       "flex items-center gap-1.5 p-2 rounded-lg border text-right transition-all",
                       isSelected
-                        ? "bg-[#0f2744] text-white border-[#0f2744] shadow-xs font-bold"
+                        ? "bg-primary text-white border-primary shadow-xs font-bold"
                         : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
                     )}
                   >
-                    <span>{chip.icon}</span>
+                    <chip.icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{chip.label}</span>
                   </button>
                 );
@@ -170,7 +172,7 @@ export function FollowUpCompletionModal({
                       value={reason}
                       checked={uninterestedReason === reason}
                       onChange={(e) => setUninterestedReason(e.target.value)}
-                      className="accent-[#0f2744]"
+                      className="accent-red-600"
                     />
                     <span>{reason}</span>
                   </label>
@@ -186,7 +188,7 @@ export function FollowUpCompletionModal({
                     type="checkbox"
                     checked={scheduleNext}
                     onChange={(e) => setScheduleNext(e.target.checked)}
-                    className="rounded accent-[#0f2744] h-4 w-4"
+                    className="rounded accent-red-600 h-4 w-4"
                   />
                   <span>جدولة متابعة قادمة لهذا العميل</span>
                 </label>
@@ -265,7 +267,7 @@ export function FollowUpCompletionModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="اكتب ملخص المكالمة أو الزيارة..."
-              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-red-500 focus:outline-hidden"
             />
           </div>
 
@@ -281,14 +283,14 @@ export function FollowUpCompletionModal({
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-1.5 rounded bg-[#0f2744] px-5 py-2 text-white font-bold hover:bg-[#19406b] transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded bg-primary px-5 py-2 text-white font-bold hover:bg-red-700 transition-colors disabled:opacity-50"
             >
               <Check className="h-4 w-4" />
-              <span>{submitting ? "جاري الحفظ..." : "حفظ وإنهاء ✓"}</span>
+              <span>{submitting ? "جاري الحفظ..." : "حفظ وإنهاء"}</span>
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

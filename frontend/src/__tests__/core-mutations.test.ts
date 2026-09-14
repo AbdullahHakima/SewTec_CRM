@@ -3,6 +3,7 @@ import { crmStore } from "../lib/storage/crm-store";
 import { FollowUpService } from "../features/follow-ups/services/follow-up.service";
 import { opportunityRepository } from "../infrastructure/local-storage/local-storage-opportunity.repository";
 
+async function run() {
 console.log("🧪 Running SewTec CRM Core Mutation Tests...\n");
 
 // Test 1: Store Reset
@@ -22,7 +23,7 @@ console.log("🧪 Running SewTec CRM Core Mutation Tests...\n");
   assert.ok(alNourFollowUp, "fu_01 should exist");
   assert.strictEqual(alNourFollowUp.status, "scheduled", "Should initially be scheduled");
 
-  const result = FollowUpService.completeFollowUp({
+  const result = await FollowUpService.completeFollowUp({
     followUpId: "fu_01",
     outcome: "interested",
     outcomeNote: "تم الاتفاق على موعد زيارة لمعاينة خط الإنتاج",
@@ -62,7 +63,7 @@ console.log("🧪 Running SewTec CRM Core Mutation Tests...\n");
 // Test 3: Negative Flow ("لم يرد" / No Answer with Automatic Next-Day Retry)
 {
   crmStore.reset();
-  const result = FollowUpService.completeFollowUp({
+  const result = await FollowUpService.completeFollowUp({
     followUpId: "fu_02",
     outcome: "no_answer",
     outcomeNote: "الهاتف يرن ولا يوجد رد",
@@ -102,3 +103,6 @@ console.log("🧪 Running SewTec CRM Core Mutation Tests...\n");
   console.log("✓ Test 4 Passed: Opportunity won stage properly recalculates customer lifetime sales and creates timeline activity.");
   console.log("\n🎉 All Core Mutation Tests Passed Successfully!\n");
 })();
+
+}
+run().catch(error => { console.error(error); process.exitCode = 1; });

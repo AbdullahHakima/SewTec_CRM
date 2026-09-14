@@ -1,4 +1,6 @@
 "use client";
+import { EditCustomerDialog } from "./EditCustomerDialog";
+import { RescheduleFollowUpDialog } from "@/features/follow-ups/components/RescheduleFollowUpDialog";
 
 import React, { useState } from "react";
 import { useCustomer } from "@/features/customers/hooks/use-customers";
@@ -10,30 +12,39 @@ import { ContextRail } from "./ContextRail";
 import { QuickLogger } from "@/features/interactions/components/QuickLogger";
 import { ActivityTimeline } from "@/features/interactions/components/ActivityTimeline";
 import { FollowUpDrawer } from "@/features/follow-ups/components/FollowUpDrawer";
+import { OpportunityDrawer } from "@/features/opportunities/components/OpportunityDrawer";
 import { FollowUp } from "@/types/crm";
-import { Clock, TrendingUp, CheckSquare, Sparkles } from "lucide-react";
+import { Clock, TrendingUp, CheckSquare, Plus } from "lucide-react";
 import { formatEgp } from "@/lib/currency/format-currency";
 import { formatBranchDate, getDaysInStage } from "@/lib/dates/branch-time";
 import { FollowUpService } from "@/features/follow-ups/services/follow-up.service";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LogInteractionDrawer } from "@/features/interactions/components/LogInteractionDrawer";
+import { EmptyState } from "@/components/ui/empty-state";
+import Link from "next/link";
 
 interface Customer360ScreenProps {
   customerId: string;
 }
-
 export function Customer360Screen({ customerId }: Customer360ScreenProps) {
   const { customer, isLoading } = useCustomer(customerId);
   const { activities } = useCustomerTimeline(customerId);
   const { followUps } = useFollowUps({ customerId });
   const { opportunities } = useOpportunities({ customerId });
 
+  const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"timeline" | "opportunities" | "followups">("timeline");
   const [showFollowUpDrawer, setShowFollowUpDrawer] = useState(false);
+  const [showLogDrawer, setShowLogDrawer] = useState(false);
+  const [showOpportunityDrawer, setShowOpportunityDrawer] = useState(false);
+  const [rescheduling, setRescheduling] = useState<FollowUp | null>(null);
+  const [actionError, setActionError] = useState("");
 
   if (isLoading || !customer) {
     return (
       <div className="flex h-96 items-center justify-center text-slate-400">
-        <p className="text-sm">جاري تحميل بيانات العميل...</p>
+        {isLoading ? <p className="text-sm">جاري تحميل بيانات العميل...</p> : <div className="surface-card p-10 text-center"><h1 className="font-bold text-zinc-900">لم يتم العثور على العميل</h1><p className="mt-2 text-sm">قد يكون الرابط غير صحيح أو بيانات العميل غير متاحة.</p><Link href="/customers" className="mt-6 inline-flex rounded-xl bg-primary px-5 py-3 text-sm text-white">العودة لدليل العملاء</Link></div>}
       </div>
     );
   }
@@ -41,20 +52,26 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
   // Active follow-up for context rail
   const activeFollowUp = followUps.find((f) => f.status === "scheduled");
 
-  const handleCompleteFollowUp = (fu: FollowUp) => {
-    FollowUpService.completeFollowUp({
+  const handleCompleteFollowUp = async (fu: FollowUp) => {
+    try {
+    setActionError("");
+    await FollowUpService.completeFollowUp({
       followUpId: fu.id,
       outcome: "interested",
       outcomeNote: "تم إنجاز المتابعة من بطاقة العميل 360",
     });
+    } catch (error) { setActionError(error instanceof Error ? error.message : "تعذر حفظ المتابعة"); }
   };
 
   return (
     <div className="space-y-5">
+      <button onClick={() => setEditing(true)} className="rounded-xl border px-4 py-2 text-sm font-semibold">تعديل البيانات وإدارة الماكينات</button>
+      {editing && <EditCustomerDialog customer={customer} onClose={() => setEditing(false)} />}
+      {actionError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200">{actionError}</p>}
       {/* 3-Tier Customer Header */}
       <CustomerHeader
         customer={customer}
-        onLogInteraction={() => setActiveTab("timeline")}
+        onLogInteraction={() => setShowLogDrawer(true)}
         onAddFollowUp={() => setShowFollowUpDrawer(true)}
       />
 
@@ -66,6 +83,7 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
             customer={customer}
             activeFollowUp={activeFollowUp}
             onCompleteFollowUp={handleCompleteFollowUp}
+            onRescheduleFollowUp={setRescheduling}
           />
         </div>
 
@@ -79,63 +97,36 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
             onFollowUpPrompt={() => setShowFollowUpDrawer(true)}
           />
 
-          {/* Workspace Tabs Navigation */}
-          <div className="flex items-center gap-2 border-b border-slate-200 bg-white px-3 pt-2 rounded-t-lg">
-            <button
-              onClick={() => setActiveTab("timeline")}
-              className={cn(
-                "flex items-center gap-1.5 pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors",
-                activeTab === "timeline"
-                  ? "border-[#0f2744] text-[#0f2744]"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
-              )}
-            >
-              <Clock className="h-3.5 w-3.5" />
-              <span>سجل النشاط والتواصل ({activities.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("opportunities")}
-              className={cn(
-                "flex items-center gap-1.5 pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors",
-                activeTab === "opportunities"
-                  ? "border-[#0f2744] text-[#0f2744]"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
-              )}
-            >
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span>الفرص البيعية ({opportunities.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("followups")}
-              className={cn(
-                "flex items-center gap-1.5 pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors",
-                activeTab === "followups"
-                  ? "border-[#0f2744] text-[#0f2744]"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
-              )}
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              <span>المتابعات ({followUps.length})</span>
-            </button>
-          </div>
+          <Tabs dir="rtl" value={activeTab} onValueChange={(value) => setActiveTab(value as typeof activeTab)} className="gap-4">
+            <TabsList aria-label="ملف العميل" className="w-full h-auto! flex-wrap justify-start rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-1.5 shadow-2xs">
+              <TabsTrigger value="timeline" className="py-2.5 px-3 text-xs rounded-xl dark:text-stone-300 data-[state=active]:bg-red-600 data-[state=active]:text-white shadow-2xs"><Clock size={14} />النشاط ({activities.length})</TabsTrigger>
+              <TabsTrigger value="opportunities" className="py-2.5 px-3 text-xs rounded-xl dark:text-stone-300 data-[state=active]:bg-red-600 data-[state=active]:text-white shadow-2xs"><TrendingUp size={14} />الفرص ({opportunities.length})</TabsTrigger>
+              <TabsTrigger value="followups" className="py-2.5 px-3 text-xs rounded-xl dark:text-stone-300 data-[state=active]:bg-red-600 data-[state=active]:text-white shadow-2xs"><CheckSquare size={14} />المتابعات ({followUps.length})</TabsTrigger>
+            </TabsList>
 
           {/* Tab 1: Timeline */}
-          {activeTab === "timeline" && (
+          <TabsContent value="timeline">
             <div className="animate-in fade-in duration-150">
               <ActivityTimeline activities={activities} />
             </div>
-          )}
+          </TabsContent>
 
           {/* Tab 2: Opportunities */}
-          {activeTab === "opportunities" && (
+          <TabsContent value="opportunities">
             <div className="space-y-3 animate-in fade-in duration-150">
               {opportunities.length === 0 ? (
-                <div className="bg-white rounded-lg border border-slate-200 p-8 text-center text-slate-400 text-xs">
-                  <Sparkles className="h-6 w-6 mx-auto mb-2 text-slate-300" />
-                  <p className="font-semibold text-slate-600">لا توجد صفقات بيعية حالية</p>
-                </div>
+                <EmptyState
+                  icon={TrendingUp}
+                  variant="action"
+                  badge="فرص البيع"
+                  title="لا توجد صفقات بيعية لهذا العميل"
+                  description="لم يتم ربط أي عروض أسعار أو فرص توريد بهذا المصنع حتى الآن. ابدأ فرصة جديدة لتسجيل متطلبات خط الإنتاج."
+                  action={{
+                    label: "إنشاء أول فرصة بيعية",
+                    onClick: () => setShowOpportunityDrawer(true),
+                    icon: Plus,
+                  }}
+                />
               ) : (
                 opportunities.map((op) => {
                   const daysInStage = getDaysInStage(op.stageUpdatedAt);
@@ -144,8 +135,8 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
                       key={op.id}
                       className="bg-white rounded-lg border border-slate-200 p-4 shadow-2xs space-y-2"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-bold text-sm text-slate-900">
                             {op.title}
                           </span>
@@ -158,19 +149,19 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 pt-1 border-t border-slate-100">
+                        <div className="flex flex-wrap items-center gap-3">
                           <span>
                             المرحلة:{" "}
                             <strong className="text-slate-800 font-semibold">
-                              {op.stage}
+                              {{ new: "جديدة", contacted: "تم التواصل", interested: "مهتم", quotation: "عرض أسعار", negotiation: "تفاوض", won: "مغلقة بنجاح", lost: "مفقودة" }[op.stage]}
                             </strong>
                           </span>
                           <span>•</span>
                           <span>المسؤول: {op.assignedRepName}</span>
                           {daysInStage > 5 && (
                             <span className="text-amber-600 font-semibold">
-                              (في هذه المرحلة منذ {daysInStage} أيام ⚠)
+                              (في هذه المرحلة منذ {daysInStage} أيام)
                             </span>
                           )}
                         </div>
@@ -185,16 +176,24 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
                 })
               )}
             </div>
-          )}
+          </TabsContent>
 
           {/* Tab 3: Follow-ups */}
-          {activeTab === "followups" && (
+          <TabsContent value="followups">
             <div className="space-y-3 animate-in fade-in duration-150">
               {followUps.length === 0 ? (
-                <div className="bg-white rounded-lg border border-slate-200 p-8 text-center text-slate-400 text-xs">
-                  <CheckSquare className="h-6 w-6 mx-auto mb-2 text-slate-300" />
-                  <p className="font-semibold text-slate-600">لا توجد مهام متابعة مسجلة</p>
-                </div>
+                <EmptyState
+                  icon={CheckSquare}
+                  variant="action"
+                  badge="جدول المتابعات"
+                  title="لا توجد مهام متابعة مسجلة لهذا العميل"
+                  description="احرص على جدولة تواصل قادم لضمان المتابعة الدورية ومعرفة احتياجات الصيانة والماكينات."
+                  action={{
+                    label: "جدولة متابعة جديدة",
+                    onClick: () => setShowFollowUpDrawer(true),
+                    icon: Plus,
+                  }}
+                />
               ) : (
                 followUps.map((fu) => (
                   <div
@@ -234,7 +233,8 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
                 ))
               )}
             </div>
-          )}
+          </TabsContent>
+          </Tabs>
         </div>
       </div>
 
@@ -243,6 +243,14 @@ export function Customer360Screen({ customerId }: Customer360ScreenProps) {
         defaultCustomerId={customer.id}
         onClose={() => setShowFollowUpDrawer(false)}
       />
+      <OpportunityDrawer
+        open={showOpportunityDrawer}
+        defaultCustomerId={customer.id}
+        onClose={() => setShowOpportunityDrawer(false)}
+      />
+      {showLogDrawer && <LogInteractionDrawer open defaultCustomerId={customer.id} onClose={() => setShowLogDrawer(false)} />}
+      {rescheduling && <RescheduleFollowUpDialog followUp={rescheduling} onClose={() => setRescheduling(null)} />}
     </div>
   );
 }
+

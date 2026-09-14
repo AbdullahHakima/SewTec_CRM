@@ -1,3 +1,4 @@
+import { HttpFollowUpRepository } from "../http/http-follow-up.repository";
 import { crmStore } from "@/lib/storage/crm-store";
 import { FollowUp } from "@/types/crm";
 import {
@@ -7,6 +8,7 @@ import {
 } from "@/features/follow-ups/repositories/follow-up.repository";
 import { isOverdue } from "@/lib/dates/branch-time";
 import { isToday } from "date-fns";
+import { apiClient } from "@/infrastructure/http/api-client";
 
 export class LocalStorageFollowUpRepository implements IFollowUpRepository {
   async getAll(query?: FollowUpQuery): Promise<FollowUp[]> {
@@ -68,6 +70,27 @@ export class LocalStorageFollowUpRepository implements IFollowUpRepository {
   }
 
   async create(input: CreateFollowUpInput): Promise<FollowUp> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const created = await apiClient.post<FollowUp>("/follow-ups", input);
+        crmStore.update((state) => {
+          const idx = state.followUps.findIndex((f) => f.id === created.id);
+          if (idx === -1) {
+            state.followUps.unshift(created);
+          } else {
+            state.followUps[idx] = created;
+          }
+          const customer = state.customers.find((c) => c.id === input.customerId);
+          if (customer) {
+            customer.nextFollowUpAt = input.scheduledAt;
+          }
+        });
+        return created;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     const newFollowUp: FollowUp = {
       id: `fu_${Date.now()}`,
       branchId: "mahalla",
@@ -95,6 +118,29 @@ export class LocalStorageFollowUpRepository implements IFollowUpRepository {
   }
 
   async reschedule(id: string, newScheduledAt: string): Promise<FollowUp> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const updated = await apiClient.patch<FollowUp>(`/follow-ups/${id}/reschedule`, {
+          newScheduledAt,
+        });
+        crmStore.update((state) => {
+          const fu = state.followUps.find((f) => f.id === id);
+          if (fu) {
+            fu.scheduledAt = newScheduledAt;
+            const customer = state.customers.find(
+              (c) => c.id === fu.customerId
+            );
+            if (customer) {
+              customer.nextFollowUpAt = newScheduledAt;
+            }
+          }
+        });
+        return updated;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     let updated: FollowUp | null = null;
 
     crmStore.update((state) => {
@@ -120,4 +166,4 @@ export class LocalStorageFollowUpRepository implements IFollowUpRepository {
   }
 }
 
-export const followUpRepository = new LocalStorageFollowUpRepository();
+export const followUpRepository = typeof window === "undefined" ? new LocalStorageFollowUpRepository() : new HttpFollowUpRepository();

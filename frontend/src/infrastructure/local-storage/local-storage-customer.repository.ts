@@ -1,3 +1,4 @@
+import { HttpCustomerRepository } from "../http/http-customer.repository";
 import { crmStore } from "@/lib/storage/crm-store";
 import { Customer } from "@/types/crm";
 import {
@@ -7,6 +8,7 @@ import {
   UpdateCustomerInput,
 } from "@/features/customers/repositories/customer.repository";
 import { isCustomerStale } from "@/lib/dates/branch-time";
+import { apiClient } from "@/infrastructure/http/api-client";
 
 export class LocalStorageCustomerRepository implements ICustomerRepository {
   async getAll(query?: CustomerQuery): Promise<Customer[]> {
@@ -45,6 +47,23 @@ export class LocalStorageCustomerRepository implements ICustomerRepository {
   }
 
   async create(input: CreateCustomerInput): Promise<Customer> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const created = await apiClient.post<Customer>("/customers", input);
+        crmStore.update((state) => {
+          const idx = state.customers.findIndex((c) => c.id === created.id);
+          if (idx === -1) {
+            state.customers.unshift(created);
+          } else {
+            state.customers[idx] = created;
+          }
+        });
+        return created;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     const newCustomer: Customer = {
       id: `cust_${Date.now()}`,
       branchId: "mahalla",
@@ -75,6 +94,21 @@ export class LocalStorageCustomerRepository implements ICustomerRepository {
   }
 
   async update(id: string, input: UpdateCustomerInput): Promise<Customer> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const updated = await apiClient.put<Customer>(`/customers/${id}`, input);
+        crmStore.update((state) => {
+          const idx = state.customers.findIndex((c) => c.id === id);
+          if (idx !== -1) {
+            state.customers[idx] = updated;
+          }
+        });
+        return updated;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     let updated: Customer | null = null;
 
     crmStore.update((state) => {
@@ -96,4 +130,4 @@ export class LocalStorageCustomerRepository implements ICustomerRepository {
   }
 }
 
-export const customerRepository = new LocalStorageCustomerRepository();
+export const customerRepository = typeof window === "undefined" ? new LocalStorageCustomerRepository() : new HttpCustomerRepository();

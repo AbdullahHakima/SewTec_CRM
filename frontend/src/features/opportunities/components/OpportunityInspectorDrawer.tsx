@@ -1,4 +1,6 @@
 "use client";
+import { Input } from "@/components/ui/input";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 
 import React, { useState } from "react";
 import Link from "next/link";
@@ -25,6 +27,7 @@ export function OpportunityInspectorDrawer({
   const [estimatedValue, setEstimatedValue] = useState<number | undefined>(undefined);
   const [notes, setNotes] = useState("");
   const [stageNote, setStageNote] = useState("");
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   if (opportunity && opportunity.id !== prevOpportunityId) {
@@ -45,7 +48,7 @@ export function OpportunityInspectorDrawer({
     { key: "interested", label: "مهتم (Interested)", color: "text-blue-700 bg-blue-50" },
     { key: "quotation", label: "عرض سعر (Quotation)", color: "text-indigo-700 bg-indigo-50" },
     { key: "negotiation", label: "تفاوض (Negotiation)", color: "text-amber-800 bg-amber-100" },
-    { key: "won", label: "تم البيع (Won ✓)", color: "text-emerald-700 bg-emerald-100" },
+    { key: "won", label: "تم البيع (Won)", color: "text-emerald-700 bg-emerald-100" },
     { key: "lost", label: "خسارة (Lost)", color: "text-rose-700 bg-rose-100" },
   ];
 
@@ -54,27 +57,21 @@ export function OpportunityInspectorDrawer({
     setSubmitting(true);
 
     try {
-      if (stage !== opportunity.stage) {
-        await opportunityRepository.updateStage(opportunity.id, stage, stageNote.trim() || undefined);
-      }
-
-      await opportunityRepository.update(opportunity.id, {
-        estimatedValue,
-        notes: notes.trim() || undefined,
-      });
+      await opportunityRepository.update(opportunity.id, { revision: opportunity.revision, stage, estimatedValue, notes: [notes.trim(), stageNote.trim()].filter(Boolean).join("\n") });
 
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : "تعذر حفظ الفرصة.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <ModalOverlay label="تفاصيل الفرصة البيعية" onClose={onClose} className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col justify-between border-r border-slate-200 animate-in slide-in-from-left duration-200">
+        {error && <p role="alert" className="p-4 text-red-700">{error}</p>}
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
@@ -92,6 +89,7 @@ export function OpportunityInspectorDrawer({
           </div>
           <button
             onClick={onClose}
+            aria-label="إغلاق"
             className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
           >
             <X className="h-5 w-5" />
@@ -139,13 +137,13 @@ export function OpportunityInspectorDrawer({
 
           {/* Stage Selector */}
           <div className="space-y-1.5">
-            <label className="block font-bold text-slate-800">
+            <label htmlFor="opportunityinspectordrawer-field-1" className="block font-bold text-slate-800">
               مرحلة الصفقة الحالية
             </label>
-            <select
+            <select id="opportunityinspectordrawer-field-1"
               value={stage}
               onChange={(e) => setStage(e.target.value as OpportunityStage)}
-              className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-semibold text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-semibold text-slate-900 focus:border-red-500 focus:outline-hidden"
             >
               {stages.map((s) => (
                 <option key={s.key} value={s.key}>
@@ -165,10 +163,10 @@ export function OpportunityInspectorDrawer({
           {/* If Stage Changed: Note prompt */}
           {stage !== opportunity.stage && (
             <div className="rounded-lg bg-blue-50/70 border border-blue-200 p-3 space-y-1.5 animate-in fade-in">
-              <label className="block font-bold text-blue-900">
+              <label htmlFor="opportunityinspectordrawer-field-2" className="block font-bold text-blue-900">
                 سبب أو تفاصيل نقل المرحلة إلى ({stage}):
               </label>
-              <input
+              <Input id="opportunityinspectordrawer-field-2"
                 type="text"
                 value={stageNote}
                 onChange={(e) => setStageNote(e.target.value)}
@@ -180,10 +178,10 @@ export function OpportunityInspectorDrawer({
 
           {/* Deal Value */}
           <div className="space-y-1.5">
-            <label className="block font-bold text-slate-800">
+            <label htmlFor="opportunityinspectordrawer-field-3" className="block font-bold text-slate-800">
               القيمة الإجمالية المتوقعة (جنيه مصري)
             </label>
-            <input
+            <Input id="opportunityinspectordrawer-field-3"
               type="number"
               value={estimatedValue ?? ""}
               onChange={(e) =>
@@ -192,21 +190,21 @@ export function OpportunityInspectorDrawer({
                 )
               }
               placeholder="مثال: 120000"
-              className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-mono text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs font-mono text-slate-900 focus:border-red-500 focus:outline-hidden"
             />
           </div>
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <label className="block font-bold text-slate-800">
+            <label htmlFor="opportunityinspectordrawer-field-4" className="block font-bold text-slate-800">
               ملاحظات وتطورات التفاوض
             </label>
-            <textarea
+            <textarea id="opportunityinspectordrawer-field-4"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="شروط السداد، الخصم المطلوب، متطلبات التركيب..."
-              className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 bg-white p-2 text-xs text-slate-900 focus:border-red-500 focus:outline-hidden"
             />
           </div>
         </form>
@@ -216,6 +214,7 @@ export function OpportunityInspectorDrawer({
           <button
             type="button"
             onClick={onClose}
+            aria-label="إغلاق"
             className="px-4 py-2 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100"
           >
             إلغاء
@@ -224,13 +223,13 @@ export function OpportunityInspectorDrawer({
             form="opp-inspector-form"
             type="submit"
             disabled={submitting}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-[#0f2744] text-xs font-bold text-white hover:bg-[#19406b] transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-primary text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             <Check className="h-4 w-4" />
-            <span>{submitting ? "جاري الحفظ..." : "حفظ التغييرات ✓"}</span>
+            <span>{submitting ? "جاري الحفظ..." : "حفظ التغييرات"}</span>
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

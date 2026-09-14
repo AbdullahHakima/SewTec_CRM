@@ -1,57 +1,26 @@
 import {
-  format,
   formatDistanceToNow,
   parseISO,
   isBefore,
   differenceInDays,
-  addDays,
-  setHours,
-  setMinutes,
-  setSeconds,
   isToday,
-  isTomorrow,
   isYesterday,
 } from "date-fns";
 import { arEG } from "date-fns/locale";
 
-export function formatBranchDate(isoString: string | undefined): string {
-  if (!isoString) return "-";
+export function formatBranchDate(iso: string | undefined): string {
+  if (!iso) return "-";
   try {
-    const date = parseISO(isoString);
-    if (isToday(date)) return "اليوم";
-    if (isTomorrow(date)) return "غداً";
-    if (isYesterday(date)) return "أمس";
-    return format(date, "d MMMM yyyy", { locale: arEG });
-  } catch {
-    return "-";
-  }
+    if (branchDay(iso) === branchDay()) return "اليوم";
+    return new Intl.DateTimeFormat("ar-EG", {timeZone:"Africa/Cairo",day:"numeric",month:"long",year:"numeric"}).format(new Date(iso));
+  } catch { return "-"; }
 }
-
-export function formatBranchDateTime(isoString: string | undefined): string {
-  if (!isoString) return "-";
-  try {
-    const date = parseISO(isoString);
-    const dayLabel = isToday(date)
-      ? "اليوم"
-      : isTomorrow(date)
-      ? "غداً"
-      : isYesterday(date)
-      ? "أمس"
-      : format(date, "d MMMM", { locale: arEG });
-    const timeLabel = format(date, "hh:mm a", { locale: arEG });
-    return `${dayLabel} — ${timeLabel}`;
-  } catch {
-    return "-";
-  }
+export function formatBranchTime(iso: string | undefined): string {
+  if (!iso) return "-";
+  try { return new Intl.DateTimeFormat("ar-EG", {timeZone:"Africa/Cairo",hour:"2-digit",minute:"2-digit"}).format(new Date(iso)); } catch { return "-"; }
 }
-
-export function formatBranchTime(isoString: string | undefined): string {
-  if (!isoString) return "-";
-  try {
-    return format(parseISO(isoString), "hh:mm a", { locale: arEG });
-  } catch {
-    return "-";
-  }
+export function formatBranchDateTime(iso: string | undefined): string {
+  return iso ? `${formatBranchDate(iso)} — ${formatBranchTime(iso)}` : "-";
 }
 
 export function formatBranchRelative(isoString: string | undefined): string {
@@ -91,7 +60,7 @@ export function isCustomerStale(
   if (!lastContactAt) return true;
   try {
     const days = differenceInDays(new Date(), parseISO(lastContactAt));
-    return isVip ? days > 7 : days > 14;
+    return isVip ? days >= 14 : days >= 21;
   } catch {
     return false;
   }
@@ -108,8 +77,24 @@ export function getDaysSinceContact(
   }
 }
 
+export function branchDay(iso = new Date().toISOString()): string {
+  return new Intl.DateTimeFormat("en-CA", {timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit"}).format(new Date(iso));
+}
+export function branchDateTimeToIso(day: string, time: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^\d{2}:\d{2}$/.test(time)) throw new Error("أدخل تاريخاً ووقتاً صالحين.");
+  const target = Date.parse(`${day}T${time}:00Z`);
+  if (!Number.isFinite(target)) throw new Error("التاريخ غير صالح.");
+  let value = target;
+  const formatter = new Intl.DateTimeFormat("en-CA", {timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"});
+  for (let i = 0; i < 3; i++) {
+    const p = Object.fromEntries(formatter.formatToParts(value).map(part => [part.type,part.value]));
+    const represented = Date.parse(`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}Z`);
+    if (represented === target) return new Date(value).toISOString();
+    value += target - represented;
+  }
+  throw new Error("هذا الوقت غير متاح بسبب تغيير التوقيت الصيفي. اختر وقتاً آخر.");
+}
 export function getTomorrowMorningIso(hour = 11, minute = 0): string {
-  const tomorrow = addDays(new Date(), 1);
-  const scheduled = setSeconds(setMinutes(setHours(tomorrow, hour), minute), 0);
-  return scheduled.toISOString();
+  const day = new Date(`${branchDay()}T12:00:00Z`); day.setUTCDate(day.getUTCDate() + 1);
+  return branchDateTimeToIso(day.toISOString().slice(0,10), `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`);
 }

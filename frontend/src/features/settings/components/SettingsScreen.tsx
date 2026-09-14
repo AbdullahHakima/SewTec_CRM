@@ -1,146 +1,188 @@
 "use client";
 
-import React, { useState } from "react";
-import { Settings, Building2, Users, Database, RotateCcw, Clock } from "lucide-react";
-import { ResetDemoDialog } from "./ResetDemoDialog";
+import React, { useState, useEffect, useCallback } from "react";
+import { Settings, Activity, Users, Building2, Server } from "lucide-react";
+import { MentoringTab, TeamSummary, MentoringNote } from "./MentoringTab";
+import { RolesTab, UserRecord } from "./RolesTab";
+import { BranchTab } from "./BranchTab";
+import { AddUserDialog } from "./AddUserDialog";
+import { MentoringNoteDialog } from "./MentoringNoteDialog";
+import { apiClient } from "@/infrastructure/http/api-client";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export function SettingsScreen() {
-  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const { user: currentUser } = useAuth();
+  const [activeTab, setActiveTab] = useState<"mentoring" | "roles" | "branch">("mentoring");
+  const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [mentoringDialogOpen, setMentoringDialogOpen] = useState(false);
+  const [selectedRepForMentoring, setSelectedRepForMentoring] = useState<string>("");
+  const [selectedRepIdForMentoring, setSelectedRepIdForMentoring] = useState<string>("");
 
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [summary, setSummary] = useState<TeamSummary | null>(null);
+
+  const [mentoringNotes, setMentoringNotes] = useState<MentoringNote[]>([]);
+  const [error, setError] = useState("");
+
+  const loadData = useCallback(async () => {
+    if (currentUser?.role !== "admin") return;
+    try {
+      setError("");
+      const [usersRes, summaryRes, notesRes] = await Promise.all([
+        apiClient.get<UserRecord[]>("/users"),
+        apiClient.get<TeamSummary>("/users/monitoring"),
+        apiClient.get<MentoringNote[]>("/mentoring/notes"),
+      ]);
+      if (usersRes) setUsers(usersRes);
+      if (summaryRes) setSummary(summaryRes);
+      if (Array.isArray(notesRes)) setMentoringNotes(notesRes);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر تحميل الإعدادات.");
+    }
+  }, [currentUser?.role]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => void loadData(), 0);
+    return () => clearTimeout(timer);
+  }, [loadData]);
+
+  const handleDeleteUser = async (id: string, name: string) => {
+    if (!confirm(`هل أنت متأكد من رغبتك في حذف المستخدم "${name}"؟`)) return;
+    try {
+      await apiClient.delete(`/users/${id}`);
+      await loadData();
+    } catch (err) {
+      setError((err instanceof Error ? err.message : "") || "تعذر حذف المستخدم. راجع توزيع أعماله ثم حاول مرة أخرى.");
+    }
+  };
+
+  const handleAddMentoringNote = async (note: { repId: string; type: string; message: string; date: string }) => {
+    try {
+      const saved = await apiClient.post<MentoringNote>("/mentoring/notes", {
+        repId: note.repId,
+        type: note.type,
+        message: note.message,
+      });
+      setMentoringNotes((prev) => [saved, ...prev]);
+    } catch (error) { throw error; }
+
+  };
+
+  if (currentUser?.role !== "admin") return <div className="space-y-3"><h1>حسابي</h1><p>{currentUser?.fullName}</p><p className="text-sm">تظهر لك بيانات العملاء المسندين إليك. تواصل مع مسؤول الفرع لإدارة الحساب والصلاحيات.</p></div>;
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-2.5 pb-1">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0f2744] text-white">
-          <Settings className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">إعدادات النظام والفرع</h1>
-          <p className="text-xs text-slate-500">
-            تكوين فرع المحلة الكبرى • إعدادات البيئة التجريبية والمسؤولين
-          </p>
-        </div>
-      </div>
-
-      {/* 1. Branch Metadata Card */}
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <Building2 className="h-4 w-4 text-blue-600" />
-          <h2 className="font-bold text-sm text-slate-900">
-            بيانات الفرع والمنطقة التشغيلية
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+    <div className="space-y-6 max-w-5xl" dir="rtl">
+      {error && <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-200"><span>{error}</span><button onClick={loadData} className="min-h-11 rounded-lg border border-red-200 px-3 font-semibold dark:border-red-800">إعادة المحاولة</button></div>}
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-4 pb-2 border-b border-stone-200 dark:border-stone-800">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-600 text-white shadow-md shadow-red-600/20">
+            <Settings className="h-5 w-5" />
+          </div>
           <div>
-            <span className="text-slate-400 block text-[11px] mb-0.5">اسم الفرع</span>
-            <span className="font-bold text-slate-800">SewTec — فرع المحلة الكبرى الرئيسي</span>
-          </div>
-
-          <div>
-            <span className="text-slate-400 block text-[11px] mb-0.5">النشاط الرئيسي</span>
-            <span className="font-medium text-slate-800">
-              توريد وصيانة ماكينات الخياطة الصناعية وتجهيز خطوط الإنتاج
-            </span>
-          </div>
-
-          <div>
-            <span className="text-slate-400 block text-[11px] mb-0.5">النطاق الجغرافي</span>
-            <span className="font-medium text-slate-800">
-              محافظة الغربية (المحلة الكبرى، طنطا، سمنود، زفتى)
-            </span>
-          </div>
-
-          <div>
-            <span className="text-slate-400 block text-[11px] mb-0.5">التوقيت المعتمد</span>
-            <span className="font-mono text-slate-800 flex items-center gap-1 mt-0.5" dir="ltr">
-              <Clock className="h-3.5 w-3.5 text-slate-400" />
-              <span>Africa/Cairo (توقيت القاهرة)</span>
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Sales Representatives */}
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-        <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-          <Users className="h-4 w-4 text-emerald-600" />
-          <h2 className="font-bold text-sm text-slate-900">
-            مسؤولو المبيعات والمتابعة بالفرع
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          <div className="p-3 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-800 font-bold text-xs">
-                أش
-              </div>
-              <div>
-                <span className="font-bold text-slate-900 block">أحمد شحاتة</span>
-                <span className="text-[11px] text-slate-500">مسؤول مبيعات أول كبار العملاء</span>
-              </div>
-            </div>
-            <span className="rounded bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">
-              نشط
-            </span>
-          </div>
-
-          <div className="p-3 rounded-lg border border-slate-100 bg-slate-50 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-800 font-bold text-xs">
-                مس
-              </div>
-              <div>
-                <span className="font-bold text-slate-900 block">محمد السيد</span>
-                <span className="text-[11px] text-slate-500">مسؤول مبيعات المشاغل والورش</span>
-              </div>
-            </div>
-            <span className="rounded bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">
-              نشط
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Developer & Demo Mode Section */}
-      <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <div className="flex items-center gap-2">
-            <Database className="h-4 w-4 text-amber-600" />
-            <h2 className="font-bold text-sm text-slate-900">
-              بيئة العرض التجريبي وإدارة البيانات
-            </h2>
-          </div>
-          <span className="rounded bg-amber-50 border border-amber-200 text-amber-800 px-2 py-0.5 text-[10px] font-bold">
-            وضع النموذج التجريبي (Mock Engine)
-          </span>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <div className="space-y-1">
-            <h3 className="font-bold text-slate-900">
-              إعادة ضبط البيانات التجريبية
-            </h3>
-            <p className="text-[11px] text-slate-500 max-w-md leading-relaxed">
-              إذا قمت بتجربة إضافة عملاء جدد أو تحريك صفقات وتريد استعادة الحالة الأولية المعتمدة لفرع المحلة الكبرى، يمكنك الضغط هنا لإعادة التهيئة.
+            <h1 className="text-xl font-bold text-slate-900 dark:text-stone-100">
+              إعدادات النظام وإشراف الإدارة
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-stone-400">
+              فرع المحلة الكبرى • مراقبة وتوجيه أداء المناديب • إدارة الأدوار والصلاحيات
             </p>
           </div>
+        </div>
 
-          <button
-            onClick={() => setResetDialogOpen(true)}
-            className="flex items-center justify-center gap-1.5 rounded-md border border-rose-200 bg-white px-4 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 shadow-2xs transition-colors shrink-0"
-          >
-            <RotateCcw className="h-4 w-4 text-rose-600" />
-            <span>إعادة ضبط البيانات التجريبية</span>
-          </button>
+        {/* Server Status Badge */}
+        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <Server size={14} className="text-emerald-600 animate-pulse" />
+          <span className="font-semibold">إدارة الفرع</span>
         </div>
       </div>
 
-      {/* Reset Confirmation Dialog */}
-      <ResetDemoDialog
-        open={resetDialogOpen}
-        onClose={() => setResetDialogOpen(false)}
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-800 pb-px">
+        <button
+          onClick={() => setActiveTab("mentoring")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold transition border-b-2 -mb-px ${
+            activeTab === "mentoring"
+              ? "border-red-600 text-red-600 dark:text-red-400"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Activity size={16} />
+          <span>الفريق</span>
+          {summary && (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300">
+              {summary.totalReps} مناديب
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab("roles")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold transition border-b-2 -mb-px ${
+            activeTab === "roles"
+              ? "border-red-600 text-red-600 dark:text-red-400"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Users size={16} />
+          <span>المستخدمون</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-700 dark:bg-stone-800 dark:text-stone-300">
+            {users.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("branch")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold transition border-b-2 -mb-px ${
+            activeTab === "branch"
+              ? "border-red-600 text-red-600 dark:text-red-400"
+              : "border-transparent text-slate-500 hover:text-slate-800 dark:text-stone-400 dark:hover:text-stone-200"
+          }`}
+        >
+          <Building2 size={16} />
+          <span>الفرع</span>
+        </button>
+      </div>
+
+      {/* Tab Panels */}
+      {activeTab === "mentoring" && (
+        <MentoringTab
+          summary={summary}
+          mentoringNotes={mentoringNotes}
+          onOpenMentoringDialog={(repId, repName) => {
+            setSelectedRepIdForMentoring(repId);
+            setSelectedRepForMentoring(repName);
+            setMentoringDialogOpen(true);
+          }}
+        />
+      )}
+
+      {activeTab === "roles" && (
+        <RolesTab
+          users={users}
+          onUserSaved={loadData}
+          onOpenAddUserDialog={() => setAddUserDialogOpen(true)}
+          onDeleteUser={handleDeleteUser}
+        />
+      )}
+
+      {activeTab === "branch" && (
+        <BranchTab />
+      )}
+
+      {/* Dialogs */}
+
+
+      <AddUserDialog
+        open={addUserDialogOpen}
+        onClose={() => setAddUserDialogOpen(false)}
+        onSuccess={loadData}
+      />
+
+      <MentoringNoteDialog
+        open={mentoringDialogOpen}
+        onClose={() => setMentoringDialogOpen(false)}
+        repName={selectedRepForMentoring}
+        repId={selectedRepIdForMentoring}
+        onSuccess={handleAddMentoringNote}
       />
     </div>
   );

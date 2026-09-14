@@ -1,146 +1,154 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  Search,
-  Plus,
-  Bell,
-  ChevronDown,
-  UserCheck,
-  PhoneCall,
-  CalendarPlus,
-  Sparkles,
-  UserPlus,
-} from "lucide-react";
-import { useFollowUps } from "@/features/follow-ups/hooks/use-follow-ups";
-import { GlobalSearchDialog } from "./GlobalSearchDialog";
+import dynamic from "next/dynamic";
+import { useRef, useState } from "react";
+import { Search, Plus, Bell, ChevronDown, PhoneCall, CalendarPlus, Sparkles, UserPlus, LogOut, Shield, User } from "lucide-react";
 import Link from "next/link";
+import { useFollowUps } from "@/features/follow-ups/hooks/use-follow-ups";
+const GlobalSearchDialog = dynamic(() => import("./GlobalSearchDialog").then(module => module.GlobalSearchDialog));
+import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/lib/auth/auth-context";
 
-interface TopBarProps {
-  onQuickAction?: (action: "call" | "followup" | "opportunity" | "customer") => void;
-}
+type QuickAction = "call" | "followup" | "opportunity" | "customer";
+const actions = [
+  { key: "customer", label: "إضافة عميل جديد", description: "ابدأ علاقة جديدة", icon: UserPlus },
+  { key: "call", label: "تسجيل مكالمة / زيارة", description: "احفظ تفاصيل التواصل", icon: PhoneCall },
+  { key: "followup", label: "جدولة متابعة جديدة", description: "حدّد خطوتك القادمة", icon: CalendarPlus },
+  { key: "opportunity", label: "إنشاء فرصة بيعية", description: "من الاهتمام إلى البيع", icon: Sparkles },
+] as const;
 
-export function TopBar({ onQuickAction }: TopBarProps) {
+export function TopBar({ onQuickAction }: { onQuickAction?: (action: QuickAction) => void }) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const selectedAction = useRef(false);
+  const actionTrigger = useRef<HTMLButtonElement>(null);
   const { counts } = useFollowUps();
+  const { user, logout } = useAuth();
 
-  const handleActionClick = (action: "call" | "followup" | "opportunity" | "customer") => {
-    setMenuOpen(false);
-    if (onQuickAction) {
-      onQuickAction(action);
-    }
-  };
+  const userInitials = user?.fullName
+    ? user.fullName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join("")
+    : "أش";
+
+  const userRoleText = user?.role === "admin" ? "مدير النظام" : "مبيعات فرع المحلة";
 
   return (
     <>
-      <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 backdrop-blur-xs px-4 md:px-6">
-        {/* Search Bar Trigger */}
+      <header className="crm-topbar sticky top-0 z-20 flex w-full items-center justify-between border-b px-4 md:px-6">
         <div className="flex-1 max-w-lg">
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-right text-sm text-slate-500 hover:border-slate-300 hover:bg-slate-100/70 transition-all shadow-2xs"
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-3.5 py-2.5 text-right text-xs text-zinc-500 transition hover:border-stone-300 hover:bg-white dark:border-stone-800 dark:bg-stone-900/60 dark:text-zinc-400"
           >
-            <div className="flex items-center gap-2.5">
-              <Search className="h-4 w-4 text-slate-400 shrink-0" />
-              <span className="truncate">
-                ابحث باسم العميل، الهاتف (010...)، أو كود الماكينة...
-              </span>
-            </div>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-2xs">
-              <span className="text-xs">Ctrl</span> K
+            <span className="flex min-w-0 items-center gap-2.5">
+              <Search size={16} className="shrink-0" />
+              <span className="truncate">ابحث عن عميل، هاتف أو ماكينة...</span>
+            </span>
+            <kbd dir="ltr" className="hidden shrink-0 rounded-md border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] text-zinc-400 dark:border-stone-700 dark:bg-stone-800 sm:block">
+              Ctrl K
             </kbd>
           </button>
         </div>
+        <div className="flex items-center gap-4">
+          <ThemeToggle />
 
-        {/* Right Side Tools */}
-        <div className="flex items-center gap-3">
-          {/* Quick Action Button & Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 rounded-md bg-[#0f2744] px-3.5 py-2 text-sm font-medium text-white shadow-xs hover:bg-[#153a63] transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>إجراء جديد</span>
-              <ChevronDown className="h-3.5 w-3.5 opacity-70" />
-            </button>
+          {/* New Action Dropdown */}
+          <DropdownMenu dir="rtl" modal={false} onOpenChange={(open) => { if (open) selectedAction.current = false; }}>
+            <DropdownMenuTrigger asChild>
+              <Button ref={actionTrigger} aria-label="إجراء جديد" className="h-10 rounded-xl px-4">
+                <Plus size={16} />
+                <span className="quick-action-label">إجراء جديد</span>
+                <ChevronDown size={13} className="opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={10} className="w-64 rounded-2xl p-2 shadow-xl" onCloseAutoFocus={(event) => { if (selectedAction.current) event.preventDefault(); }}>
+              <DropdownMenuLabel className="px-3 py-2 text-[11px] text-zinc-400">خطوتك التالية</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {actions.map(({ key, label, description, icon: Icon }) => (
+                <DropdownMenuItem
+                  key={key}
+                  onSelect={() => {
+                    selectedAction.current = true;
+                    actionTrigger.current?.focus();
+                    onQuickAction?.(key);
+                  }}
+                  className="gap-3 rounded-xl p-3"
+                >
+                  <span className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-950/50 dark:text-red-400">
+                    <Icon size={16} />
+                  </span>
+                  <span className="flex flex-col gap-1">
+                    <span className="text-xs font-semibold">{label}</span>
+                    <span className="text-[10px] text-zinc-400">{description}</span>
+                  </span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-            {menuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-20"
-                  onClick={() => setMenuOpen(false)}
-                />
-                <div className="absolute left-0 mt-2 w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg z-30 animate-in fade-in zoom-in-95 duration-100">
-                  <button
-                    onClick={() => handleActionClick("customer")}
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors text-right"
-                  >
-                    <UserPlus className="h-4 w-4 text-blue-600" />
-                    <span>إضافة عميل جديد</span>
-                  </button>
-                  <button
-                    onClick={() => handleActionClick("call")}
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors text-right"
-                  >
-                    <PhoneCall className="h-4 w-4 text-emerald-600" />
-                    <span>تسجيل مكالمة / زيارة</span>
-                  </button>
-                  <button
-                    onClick={() => handleActionClick("followup")}
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors text-right"
-                  >
-                    <CalendarPlus className="h-4 w-4 text-amber-600" />
-                    <span>جدولة متابعة جديدة</span>
-                  </button>
-                  <button
-                    onClick={() => handleActionClick("opportunity")}
-                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors text-right border-t border-slate-100 mt-1 pt-2"
-                  >
-                    <Sparkles className="h-4 w-4 text-indigo-600" />
-                    <span>إنشاء فرصة بيعية</span>
-                  </button>
+          {/* Overdue Notification Link */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link href="/follow-ups?view=overdue" aria-label={`المتابعات المتأخرة: ${counts.overdue}`} className="relative rounded-xl p-2 text-zinc-500 transition hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-stone-800">
+                <Bell size={20} strokeWidth={1.7} />
+                {counts.overdue > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-stone-900">
+                    {counts.overdue}
+                  </span>
+                )}
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={10}>المتابعات التي تحتاج انتباهك</TooltipContent>
+          </Tooltip>
+
+          {/* User Profile Summary with Logout Dropdown */}
+          <DropdownMenu dir="rtl">
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="profile-summary flex items-center gap-3 border-r border-stone-200 pr-4 text-right transition hover:opacity-80 dark:border-stone-800"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-sm font-bold text-zinc-700 dark:border-stone-700 dark:bg-stone-800 dark:text-zinc-200">
+                  {userInitials}
+                </span>
+                <div className="hidden flex-col text-right sm:flex">
+                  <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                    {user?.fullName || ""}
+                  </span>
+                  <span className="mt-0.5 text-[10px] text-zinc-400">
+                    {userRoleText}
+                  </span>
                 </div>
-              </>
-            )}
-          </div>
-
-          {/* Notifications Bell */}
-          <Link
-            href="/follow-ups?view=overdue"
-            className="relative rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-            title="المتابعات المتأخرة"
-          >
-            <Bell className="h-5 w-5" />
-            {counts.overdue > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white tabular-nums ring-2 ring-white">
-                {counts.overdue}
-              </span>
-            )}
-          </Link>
-
-          <div className="h-5 w-px bg-slate-200" />
-
-          {/* User Profile Info */}
-          <div className="flex items-center gap-2.5 pl-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-slate-700 font-bold text-sm">
-              <UserCheck className="h-4 w-4 text-slate-600" />
-            </div>
-            <div className="hidden sm:flex flex-col text-right">
-              <span className="text-xs font-bold text-slate-800">
-                أحمد شحاتة
-              </span>
-              <span className="text-[11px] text-slate-500">
-                مبيعات فرع المحلة
-              </span>
-            </div>
-          </div>
+                <ChevronDown size={13} className="opacity-50" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl p-2 shadow-xl">
+              <DropdownMenuLabel className="px-3 py-2">
+                <div className="flex items-center gap-2">
+                  {user?.role === "admin" ? <Shield size={14} className="text-emerald-500" /> : <User size={14} className="text-blue-500" />}
+                  <span className="text-xs font-bold">{user?.fullName}</span>
+                </div>
+                <p className="mt-0.5 text-[10px] text-zinc-400">اسم المستخدم: {user?.username}</p>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={logout}
+                className="gap-2.5 rounded-xl p-2.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+              >
+                <LogOut size={15} />
+                <span>تسجيل الخروج</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
-
-      {/* Global Command Palette */}
-      <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
+      {searchOpen && <GlobalSearchDialog open onOpenChange={setSearchOpen} />}
     </>
   );
 }

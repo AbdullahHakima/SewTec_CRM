@@ -10,6 +10,7 @@ export interface InstalledMachine {
 }
 
 export interface Customer {
+  revision?: string;
   id: string;
   branchId: "mahalla";
   name: string;
@@ -42,6 +43,7 @@ export type OpportunityStage =
   | "lost";
 
 export interface Opportunity {
+  revision?: string;
   id: string;
   branchId: "mahalla";
   customerId: string;
@@ -72,6 +74,7 @@ export type InteractionOutcome =
   | "not_interested";
 
 export interface FollowUp {
+  revision?: string;
   id: string;
   branchId: "mahalla";
   customerId: string;
@@ -121,13 +124,29 @@ export interface Activity {
   };
 }
 
+export type MachineBrand = "JACK" | "HIKARI" | "SIRUBA" | "JUKI" | "BROTHER";
+export type MachineCategory = "single_needle" | "overlock" | "interlock" | "buttonhole" | "special" | "embroidery";
+
 export interface Product {
   id: string;
   model: string;
-  brand: "JACK" | "HIKARI" | "SIRUBA" | "JUKI" | "BROTHER";
-  category: "single_needle" | "overlock" | "interlock" | "embroidery" | "special";
+  brand: MachineBrand | string;
+  category: MachineCategory | string;
   suggestedPriceEgp: number;
   descriptionArabic: string;
+  speedRpm?: number;
+  maxStitchLengthMm?: number;
+  needleSystem?: string;
+  motorType?: string;
+  hasAutomaticTrimmer?: boolean;
+  hasAutoFootLifter?: boolean;
+  hasReverseStitch?: boolean;
+  lubricationType?: string;
+  warrantyMonths?: number;
+  inStock?: boolean;
+  stockCount?: number;
+  application?: string;
+  features?: string[];
 }
 
 export interface CrmState {

@@ -1,4 +1,5 @@
 "use client";
+import { ListStatus } from "@/components/ui/list-status";
 
 import React, { useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -7,16 +8,18 @@ import { FollowUpCard } from "./FollowUpCard";
 import { FollowUpCompletionModal } from "./FollowUpCompletionModal";
 import { FollowUpDrawer } from "./FollowUpDrawer";
 import { FollowUp } from "@/types/crm";
-import { CheckSquare, Plus, Clock, AlertTriangle, Calendar, CheckCircle } from "lucide-react";
+import { CheckSquare, Plus, Clock, AlertTriangle, Calendar, CheckCircle, Trophy, CalendarCheck2, CalendarPlus, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseISO, getHours } from "date-fns";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function FollowUpsScreen() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentView = (searchParams.get("view") as "today" | "overdue" | "upcoming" | "completed") || "today";
 
-  const { followUps, counts } = useFollowUps({ view: currentView });
+  const list = useFollowUps({ view: currentView });
+  const { followUps, counts } = list;
 
   const [activeFollowUpForModal, setActiveFollowUpForModal] = useState<FollowUp | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -81,10 +84,11 @@ export function FollowUpsScreen() {
 
   return (
     <div className="space-y-4">
+      <ListStatus {...list} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-1">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#0f2744] text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
             <CheckSquare className="h-5 w-5" />
           </div>
           <div>
@@ -97,15 +101,15 @@ export function FollowUpsScreen() {
 
         <button
           onClick={() => setDrawerOpen(true)}
-          className="flex items-center gap-1.5 rounded-md bg-[#0f2744] px-4 py-2 text-xs font-bold text-white hover:bg-[#19406b] shadow-xs transition-colors"
+          className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-red-700 shadow-xs transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>+ متابعة جديدة</span>
+          <span>متابعة جديدة</span>
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 bg-white p-2 rounded-lg shadow-2xs">
+      <div className="grid grid-cols-2 sm:flex items-center gap-2 overflow-x-auto border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-2.5 rounded-2xl shadow-2xs">
         {tabs.map((tab) => {
           const isSelected = currentView === tab.key;
           const Icon = tab.icon;
@@ -113,12 +117,13 @@ export function FollowUpsScreen() {
           return (
             <button
               key={tab.key}
+              aria-pressed={isSelected}
               onClick={() => setView(tab.key)}
               className={cn(
                 "flex items-center gap-2 rounded-md px-3.5 py-2 text-xs font-bold transition-all shrink-0",
                 isSelected
-                  ? "bg-[#0f2744] text-white shadow-2xs"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-primary text-white shadow-2xs"
+                  : "text-slate-600 dark:text-stone-300 hover:bg-slate-100 dark:hover:bg-stone-800"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -144,17 +149,43 @@ export function FollowUpsScreen() {
 
       {/* Main List */}
       {followUps.length === 0 ? (
-        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center text-slate-400 text-xs">
-          <CheckCircle className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-          <p className="font-bold text-slate-700 text-sm">
-            لا توجد متابعات في هذا القسم حالياً
-          </p>
-          <p className="mt-1 text-slate-400">
-            {currentView === "overdue"
-              ? "ممتاز! لا توجد أي متابعات متأخرة على مسؤولي الفرع."
-              : "يمكنك جدولة متابعة جديدة بالضغط على زر + متابعة جديدة أعلاه."}
-          </p>
-        </div>
+        currentView === "overdue" ? (
+          <EmptyState
+            icon={Trophy}
+            variant="celebrate"
+            badge="أداء ممتاز للفرع"
+            title="رائع! لا توجد أي متابعات متأخرة"
+            description="جميع عملاء ومصانع المحلة الكبرى تمت متابعتهم في المواعيد المحددة دون أي تأخير معلق."
+            action={{ label: "جدولة متابعة جديدة", onClick: () => setDrawerOpen(true), icon: Plus }}
+          />
+        ) : currentView === "today" ? (
+          <EmptyState
+            icon={CalendarCheck2}
+            variant="default"
+            badge="جدول اليوم"
+            title="لا توجد متابعات مجدولة لليوم"
+            description="جدول اتصالات وزيارات اليوم خالٍ حالياً. يمكنك استغلال الوقت في فتح فرص جديدة أو متابعة عملاء غير نشطين."
+            action={{ label: "جدولة متابعة لليوم", onClick: () => setDrawerOpen(true), icon: Plus }}
+          />
+        ) : currentView === "upcoming" ? (
+          <EmptyState
+            icon={CalendarPlus}
+            variant="action"
+            badge="المهام القادمة"
+            title="لا توجد متابعات مستقبلية مجدولة"
+            description="قم بتنظيم جدول الأيام القادمة وحجز مواعيد المعاينات والتسليم مع مصانع وورش الملابس."
+            action={{ label: "جدولة متابعة قادمة", onClick: () => setDrawerOpen(true), icon: Plus }}
+          />
+        ) : (
+          <EmptyState
+            icon={CheckCircle2}
+            variant="celebrate"
+            badge="الأرشيف المنجز"
+            title="لم يتم إنجاز متابعات في هذه الجلسة بعد"
+            description="عند إنجاز المتابعات من قائمة اليوم أو المتأخرة، ستظهر هنا موثقة بالنتائج والملاحظات والتوقيت."
+            action={{ label: "الانتقال لمتابعات اليوم", onClick: () => setView("today"), icon: Clock }}
+          />
+        )
       ) : currentView === "today" && todayGroups ? (
         /* Grouped by Morning vs Afternoon */
         <div className="space-y-5">

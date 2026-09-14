@@ -1,66 +1,22 @@
 "use client";
-
-import { useSyncExternalStore, useMemo } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
 import { Customer } from "@/types/crm";
-import { CustomerQuery } from "@/features/customers/repositories/customer.repository";
-import { isCustomerStale } from "@/lib/dates/branch-time";
-
+import { CustomerQuery } from "../repositories/customer.repository";
+import { useApiPage, DATA_EVENT } from "@/infrastructure/http/use-api-page";
 export function useCustomers(query?: CustomerQuery) {
-  const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot);
-  const type = query?.type;
-  const assignedRepId = query?.assignedRepId;
-  const search = query?.search;
-  const isStale = query?.isStale;
-
-  const customers = useMemo(() => {
-    let list = state.customers;
-
-    if (type && type !== "all") {
-      list = list.filter((c) => c.type === type);
-    }
-
-    if (assignedRepId && assignedRepId !== "all") {
-      list = list.filter((c) => c.assignedRepId === assignedRepId);
-    }
-
-    if (search && search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.phone.includes(q) ||
-          (c.contactPerson && c.contactPerson.toLowerCase().includes(q)) ||
-          (c.address && c.address.toLowerCase().includes(q)) ||
-          c.installedMachines.some((m) => m.model.toLowerCase().includes(q))
-      );
-    }
-
-    if (isStale) {
-      list = list.filter((c) => isCustomerStale(c.lastContactAt, c.isVip));
-    }
-
-    return list;
-  }, [state.customers, type, assignedRepId, search, isStale]);
-
-  return {
-    customers,
-    totalCount: state.customers.length,
-    isLoading: false,
-  };
+  const result = useApiPage<Customer, {typeCounts: Record<string, number>; all: number}>("/customers", { ...query }, { typeCounts: {}, all: 0 });
+  return { ...result, customers: result.items };
 }
-
-export function useCustomer(id: string): {
-  customer: Customer | null;
-  isLoading: boolean;
-} {
-  const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot);
-  const customer = useMemo(() => {
-    return state.customers.find((c) => c.id === id) || null;
-  }, [state.customers, id]);
-
-  return {
-    customer,
-    isLoading: false,
-  };
+export function useCustomer(id: string) {
+  const state = useSyncExternalStore(crmStore.subscribe, crmStore.getSnapshot, crmStore.getSnapshot);
+  const [isLoading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    const load = () => { setLoading(true); crmStore.refreshCustomer(id).catch(error => { if (active) setError(error.message); }).finally(() => { if (active) setLoading(false); }); };
+    load(); window.addEventListener(DATA_EVENT, load);
+    return () => { active = false; window.removeEventListener(DATA_EVENT, load); };
+  }, [id]);
+  return { customer: state.customers.find(c => c.id === id) ?? null, isLoading, error };
 }

@@ -7,20 +7,29 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx src/__tests__/core-mutations.test.ts && tsx src/__tests__/acceptance-journeys.test.ts"
+    "test": "tsx src/__tests__/core-mutations.test.ts && tsx src/__tests__/acceptance-journeys.test.ts && tsx src/__tests__/machines-catalog.test.ts && tsx src/__tests__/edge-cases-and-failures.test.ts"
   },
   "dependencies": {
     "@tanstack/react-table": "^9.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cn": "^0.2.6",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.43.0",
+    "motion": "^13.2.0",
     "next": "16.3.4",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.6.7",
     "react": "19.2.8",
+    "react-day-picker": "^10.0.1",
     "react-dom": "19.2.8",
-    "tailwind-merge": "^3.6.0"
+    "react-phone-number-input": "^3.4.18",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

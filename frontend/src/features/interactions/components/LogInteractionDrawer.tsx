@@ -1,9 +1,13 @@
 "use client";
+import { branchDateTimeToIso } from "@/lib/dates/branch-time";
+import { Input } from "@/components/ui/input";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 
 import React, { useState } from "react";
 import { X, PhoneCall, Check } from "lucide-react";
 import { InteractionChannel, InteractionOutcome, FollowUpChannel } from "@/types/crm";
 import { useCustomers } from "@/features/customers/hooks/use-customers";
+import { apiClient } from "@/infrastructure/http/api-client";
 import { crmStore } from "@/lib/storage/crm-store";
 
 interface LogInteractionDrawerProps {
@@ -19,7 +23,8 @@ export function LogInteractionDrawer({
   defaultCustomerId,
   onSuccess,
 }: LogInteractionDrawerProps) {
-  const { customers } = useCustomers();
+  const [customerSearch, setCustomerSearch] = useState("");
+  const { customers } = useCustomers({ search: customerSearch });
 
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
   const customerId = selectedCustomerId || defaultCustomerId || customers[0]?.id || "";
@@ -40,7 +45,7 @@ export function LogInteractionDrawer({
 
   if (!open) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerId || !summary.trim()) {
       setError("يرجى اختيار العميل وكتابة ملخص التواصل");
@@ -51,78 +56,17 @@ export function LogInteractionDrawer({
     setError("");
 
     try {
-      const selectedCustomer = customers.find((c) => c.id === customerId);
+      const selectedCustomer = customers.find((c) => c.id === customerId) ?? await apiClient.get<import("@/types/crm").Customer>(`/customers/${customerId}`);
       if (!selectedCustomer) {
         throw new Error("Customer not found");
       }
 
-      const now = new Date().toISOString();
-      const channelArabic =
-        channel === "call"
-          ? "مكالمة هاتفية"
-          : channel === "visit"
-          ? "زيارة ميدانية"
-          : channel === "whatsapp"
-          ? "مراسلة واتساب"
-          : "ملاحظة مسجلة";
-
-      crmStore.update((state) => {
-        // Add Interaction
-        state.interactions.unshift({
-          id: `int_${Date.now()}`,
-          customerId: selectedCustomer.id,
-          customerName: selectedCustomer.name,
-          channel,
-          outcome,
-          summary: summary.trim(),
-          performedBy: selectedCustomer.assignedRepName,
-          occurredAt: now,
-        });
-
-        // Add Activity
-        state.activities.unshift({
-          id: `act_${Date.now()}`,
-          customerId: selectedCustomer.id,
-          type: "interaction",
-          title: `${channelArabic} — ${selectedCustomer.name}`,
-          description: summary.trim(),
-          occurredAt: now,
-          performedBy: selectedCustomer.assignedRepName,
-          metadata: {
-            channel,
-            outcome,
-          },
-        });
-
-        // Update Customer lastContactAt
-        const c = state.customers.find((cust) => cust.id === customerId);
-        if (c) {
-          c.lastContactAt = now;
-        }
-
-        // Optional Next Follow-Up
-        if (scheduleNext && nextDate) {
-          const scheduledAt = new Date(`${nextDate}T${nextTime}:00`).toISOString();
-          const newFuId = `fu_${Date.now() + 1}`;
-          state.followUps.unshift({
-            id: newFuId,
-            branchId: "mahalla",
-            customerId: selectedCustomer.id,
-            customerName: selectedCustomer.name,
-            customerPhone: selectedCustomer.phone,
-            channel: nextChannel,
-            scheduledAt,
-            topic: nextTopic.trim() || `متابعة ما بعد ${channelArabic}`,
-            status: "scheduled",
-            assignedRepId: selectedCustomer.assignedRepId,
-            assignedRepName: selectedCustomer.assignedRepName,
-          });
-
-          if (c) {
-            c.nextFollowUpAt = scheduledAt;
-          }
-        }
+      await apiClient.post("/interactions", {
+        customerId, customerName: selectedCustomer.name, channel, outcome, summary: summary.trim(), performedBy: "",
+        nextFollowUp: scheduleNext ? { scheduledAt: branchDateTimeToIso(nextDate, nextTime), channel: nextChannel, topic: nextTopic.trim() || "متابعة التواصل" } : undefined,
       });
+      await crmStore.syncWithBackend();
+      await crmStore.refreshCustomer(customerId);
 
       setSummary("");
       setScheduleNext(false);
@@ -130,14 +74,14 @@ export function LogInteractionDrawer({
       onClose();
     } catch (err) {
       console.error(err);
-      setError("حدث خطأ أثناء حفظ التواصل");
+      setError(err instanceof Error ? err.message : "حدث خطأ أثناء حفظ التواصل");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+    <ModalOverlay label="تسجيل تواصل" onClose={onClose} className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col justify-between border-r border-slate-200 animate-in slide-in-from-left duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50/50">
@@ -156,6 +100,7 @@ export function LogInteractionDrawer({
           </div>
           <button
             onClick={onClose}
+            aria-label="إغلاق"
             className="p-1 text-slate-400 hover:text-slate-600 rounded-md"
           >
             <X className="h-5 w-5" />
@@ -176,14 +121,16 @@ export function LogInteractionDrawer({
 
           {/* Customer */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">
+            <label htmlFor="loginteractiondrawer-field-1" className="block font-bold text-slate-700 mb-1">
               العميل <span className="text-rose-500">*</span>
             </label>
-            <select
+            <input aria-label="بحث عن عميل" placeholder="ابحث بالاسم أو رقم الهاتف" value={customerSearch} onChange={e => setCustomerSearch(e.target.value)} className="mb-2 w-full rounded-lg border p-2" />
+            <select id="loginteractiondrawer-field-1"
               value={customerId}
               onChange={(e) => setSelectedCustomerId(e.target.value)}
-              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-red-500 focus:outline-hidden"
             >
+              {customerId && !customers.some(c => c.id === customerId) && <option value={customerId}>العميل المحدد</option>}
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.city})
@@ -194,13 +141,13 @@ export function LogInteractionDrawer({
 
           {/* Channel */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">
+            <label htmlFor="loginteractiondrawer-field-2" className="block font-bold text-slate-700 mb-1">
               طريقة التواصل <span className="text-rose-500">*</span>
             </label>
-            <select
+            <select id="loginteractiondrawer-field-2"
               value={channel}
               onChange={(e) => setChannel(e.target.value as InteractionChannel)}
-              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-red-500 focus:outline-hidden"
             >
               <option value="call">مكالمة هاتفية</option>
               <option value="visit">زيارة ميدانية / بالفرع</option>
@@ -211,45 +158,45 @@ export function LogInteractionDrawer({
 
           {/* Outcome */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">
+            <label htmlFor="loginteractiondrawer-field-3" className="block font-bold text-slate-700 mb-1">
               النتيجة المبدئية
             </label>
-            <select
+            <select id="loginteractiondrawer-field-3"
               value={outcome}
               onChange={(e) => setOutcome(e.target.value as InteractionOutcome)}
-              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-red-500 focus:outline-hidden"
             >
-              <option value="interested">مهتم 👍</option>
-              <option value="quotation_requested">طلب عرض أسعار 📄</option>
+              <option value="interested">مهتم ومستمر</option>
+              <option value="quotation_requested">طلب عرض أسعار</option>
               <option value="needs_time">يحتاج وقتاً ⏳</option>
-              <option value="no_answer">لم يرد 📵</option>
-              <option value="not_interested">غير مهتم ✕</option>
+              <option value="no_answer">لم يرد على الاتصال</option>
+              <option value="not_interested">غير مهتم حالياً</option>
             </select>
           </div>
 
           {/* Summary Note */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1">
+            <label htmlFor="loginteractiondrawer-field-4" className="block font-bold text-slate-700 mb-1">
               تفاصيل وملخص ما دار <span className="text-rose-500">*</span>
             </label>
-            <textarea
+            <textarea id="loginteractiondrawer-field-4"
               rows={3}
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               placeholder="اكتب ما تم الاتفاق عليه أو ملاحظات الزيارة..."
               required
-              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-blue-500 focus:outline-hidden"
+              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-red-500 focus:outline-hidden"
             />
           </div>
 
           {/* Next Follow-Up Checkbox */}
           <div className="pt-2 border-t border-slate-100 space-y-2">
             <label className="flex items-center gap-2 font-bold text-slate-800 cursor-pointer">
-              <input
+              <Input
                 type="checkbox"
                 checked={scheduleNext}
                 onChange={(e) => setScheduleNext(e.target.checked)}
-                className="rounded accent-[#0f2744] h-4 w-4"
+                className="rounded accent-red-600 h-4 w-4"
               />
               <span>جدولة متابعة قادمة لهذا العميل</span>
             </label>
@@ -259,7 +206,7 @@ export function LogInteractionDrawer({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <span className="text-[10px] text-slate-500 block mb-0.5">التاريخ</span>
-                    <input
+                    <Input
                       type="date"
                       value={nextDate}
                       onChange={(e) => setNextDate(e.target.value)}
@@ -268,7 +215,7 @@ export function LogInteractionDrawer({
                   </div>
                   <div>
                     <span className="text-[10px] text-slate-500 block mb-0.5">الوقت</span>
-                    <input
+                    <Input
                       type="time"
                       value={nextTime}
                       onChange={(e) => setNextTime(e.target.value)}
@@ -293,7 +240,7 @@ export function LogInteractionDrawer({
 
                 <div>
                   <span className="text-[10px] text-slate-500 block mb-0.5">موضوع المتابعة</span>
-                  <input
+                  <Input
                     type="text"
                     value={nextTopic}
                     onChange={(e) => setNextTopic(e.target.value)}
@@ -311,6 +258,7 @@ export function LogInteractionDrawer({
           <button
             type="button"
             onClick={onClose}
+            aria-label="إغلاق"
             className="px-4 py-2 rounded-md border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:bg-slate-100"
           >
             إلغاء
@@ -319,13 +267,13 @@ export function LogInteractionDrawer({
             form="log-interaction-form"
             type="submit"
             disabled={submitting}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-[#0f2744] text-xs font-bold text-white hover:bg-[#19406b] transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-5 py-2 rounded-md bg-primary text-xs font-bold text-white hover:bg-red-700 transition-colors disabled:opacity-50"
           >
             <Check className="h-4 w-4" />
             <span>{submitting ? "جاري الحفظ..." : "حفظ التواصل"}</span>
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, Users, TrendingUp, Cpu, Phone } from "lucide-react";
-import { crmStore } from "@/lib/storage/crm-store";
+import { apiClient } from "@/infrastructure/http/api-client";
+import { Customer, Opportunity, Product } from "@/types/crm";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 import { formatEgp } from "@/lib/currency/format-currency";
 
 interface GlobalSearchDialogProps {
@@ -32,57 +34,29 @@ export function GlobalSearchDialog({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onOpenChange]);
 
-  const state = crmStore.getSnapshot();
-
-  const results = useMemo(() => {
-    if (!query.trim()) return null;
-    const q = query.trim().toLowerCase();
-
-    const matchedCustomers = state.customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        (c.contactPerson && c.contactPerson.toLowerCase().includes(q)) ||
-        c.installedMachines.some((m) => m.model.toLowerCase().includes(q))
-    );
-
-    const matchedOpportunities = state.opportunities.filter(
-      (op) =>
-        op.title.toLowerCase().includes(q) ||
-        op.customerName.toLowerCase().includes(q) ||
-        op.machineModel.toLowerCase().includes(q)
-    );
-
-    const matchedProducts = state.products.filter(
-      (p) =>
-        p.model.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.descriptionArabic.toLowerCase().includes(q)
-    );
-
-    return {
-      customers: matchedCustomers.slice(0, 4),
-      opportunities: matchedOpportunities.slice(0, 3),
-      products: matchedProducts.slice(0, 3),
-      hasResults:
-        matchedCustomers.length > 0 ||
-        matchedOpportunities.length > 0 ||
-        matchedProducts.length > 0,
-    };
-  }, [query, state]);
+  const [results, setResults] = useState<{customers: Customer[]; opportunities: Opportunity[]; products: Product[]; hasResults: boolean} | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let active = true;
+    if (!open || !query.trim()) return;
+    const timer = setTimeout(() => apiClient.get<NonNullable<typeof results>>("/search", { q: query }).then(data => { if (active) setResults(data); }).catch(error => { if (active) setError(error.message); }), 200);
+    return () => { active = false; clearTimeout(timer); };
+  }, [open, query]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <ModalOverlay label="البحث الشامل" onClose={() => onOpenChange(false)} className="fixed inset-0 z-50 flex items-start justify-center pt-10 px-4 bg-slate-900/50">
       <div className="w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-2xl border border-slate-200">
+        {error && <p role="alert" className="p-4 text-red-700">{error}</p>}
         {/* Input Bar */}
         <div className="relative flex items-center border-b border-slate-200 px-4 py-3">
           <Search className="h-5 w-5 text-slate-400 shrink-0 ml-3" />
           <input
+            aria-label="البحث الشامل"
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setResults(null); setError(""); }}
             placeholder="ابحث باسم العميل، الهاتف (010...)، أو كود الماكينة (HK2900)..."
             autoFocus
             className="flex-1 bg-transparent text-base text-slate-900 placeholder:text-slate-400 focus:outline-hidden"
@@ -245,6 +219,6 @@ export function GlobalSearchDialog({
           <span>SewTec Fast Command</span>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

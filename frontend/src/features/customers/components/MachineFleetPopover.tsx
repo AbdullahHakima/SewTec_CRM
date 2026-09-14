@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { InstalledMachine } from "@/types/crm";
-import { Cpu } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Cpu, X } from "lucide-react";
 
 interface MachineFleetPopoverProps {
   machines: InstalledMachine[];
@@ -19,14 +20,9 @@ export function MachineFleetPopover({ machines }: MachineFleetPopoverProps) {
   const remainingCount = machines.length - 2;
 
   return (
-    <div className="relative inline-block">
-      <div
-        className="flex items-center gap-1.5 cursor-pointer text-xs"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(!open);
-        }}
-      >
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+      <button aria-label="عرض أسطول الماكينات" className="flex items-center gap-1.5 rounded-lg text-xs" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-wrap gap-1">
           {firstTwo.map((m, idx) => (
             <span
@@ -46,31 +42,23 @@ export function MachineFleetPopover({ machines }: MachineFleetPopoverProps) {
             </span>
           )}
         </div>
-      </div>
+      </button>
+      </PopoverTrigger>
 
       {open && (
         <>
-          <div
-            className="fixed inset-0 z-30"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen(false);
-            }}
-          />
-          <div
-            className="absolute z-40 top-full mt-1.5 right-0 w-72 rounded-lg border border-slate-200 bg-white p-3 shadow-xl text-right animate-in fade-in zoom-in-95 duration-100"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <PopoverContent dir="rtl" align="start" className="w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 mb-2">
               <div className="flex items-center gap-1.5 font-bold text-xs text-slate-800">
                 <Cpu className="h-3.5 w-3.5 text-blue-600" />
                 <span>أسطول الماكينات المركبة ({machines.length})</span>
               </div>
               <button
+                aria-label="إغلاق تفاصيل الماكينات"
                 onClick={() => setOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs"
+                className="flex h-11 w-11 items-center justify-center rounded-lg text-slate-500 hover:bg-stone-100 hover:text-slate-700"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
@@ -102,9 +90,9 @@ export function MachineFleetPopover({ machines }: MachineFleetPopoverProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </PopoverContent>
         </>
       )}
-    </div>
+    </Popover>
   );
 }

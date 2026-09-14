@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Arabic } from "next/font/google";
+import { Alexandria, Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import { AppShell } from "@/components/layout/AppShell";
 
-const ibmPlexArabic = IBM_Plex_Sans_Arabic({
-  subsets: ["arabic"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-ibm-plex-arabic",
+const alexandria = Alexandria({
+  subsets: ["arabic", "latin"],
+  variable: "--font-alexandria",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -22,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar" dir="rtl" className={ibmPlexArabic.variable}>
+    <html lang="ar" dir="rtl" suppressHydrationWarning className={`${alexandria.variable} ${inter.variable}`}>
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans">
         <Providers>
           <AppShell>{children}</AppShell>

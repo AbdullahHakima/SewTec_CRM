@@ -1,85 +1,46 @@
-import { CrmState } from "@/types/crm";
+import { CrmState, Customer, Opportunity, FollowUp, Product, Activity, Interaction } from "@/types/crm";
 import { INITIAL_CRM_STATE } from "@/data/demo/seed-data";
+import { apiClient, PageResult } from "@/infrastructure/http/api-client";
 
-const STORAGE_KEY = "sewtec_crm_state_v1";
-
-type Listener = () => void;
-
+const empty = (): CrmState => ({ version: INITIAL_CRM_STATE.version, customers: [], opportunities: [], followUps: [], interactions: [], activities: [], products: [] });
 class CrmStore {
-  private state: CrmState = INITIAL_CRM_STATE;
-  private listeners: Set<Listener> = new Set();
-  private isHydrated = false;
-
+  private state: CrmState = empty();
+  private listeners = new Set<() => void>();
+  private generation = 0;
   public initClient() {
-    if (this.isHydrated || typeof window === "undefined") return;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && parsed.version === INITIAL_CRM_STATE.version) {
-          this.state = parsed;
-        } else {
-          // Schema version changed or invalid - reset to fresh seed
-          this.reset();
-          return;
-        }
-      } else {
-        this.reset();
-        return;
-      }
-    } catch {
-      this.reset();
-      return;
-    }
-    this.isHydrated = true;
-    this.notify();
+    if (typeof window !== "undefined") localStorage.removeItem("sewtec_crm_state_v1");
   }
-
-  public getSnapshot = (): CrmState => {
-    return this.state;
-  };
-
-  public subscribe = (listener: Listener): (() => void) => {
-    this.listeners.add(listener);
-    return () => {
-      this.listeners.delete(listener);
-    };
-  };
-
-  public update(mutator: (draft: CrmState) => void) {
-    const next = structuredClone(this.state);
-    mutator(next);
-    this.state = next;
-    this.persist();
-    this.notify();
+  public clear() { this.generation++; this.state = empty(); this.notify(); }
+  public async syncWithBackend(): Promise<boolean> {
+    if (!apiClient.getToken()) return false;
+    const generation = ++this.generation;
+    const [customers, opportunities, followUps, products] = await Promise.all([
+      apiClient.get<PageResult<Customer>>("/customers"), apiClient.get<PageResult<Opportunity>>("/opportunities"),
+      apiClient.get<PageResult<FollowUp>>("/follow-ups"), apiClient.get<PageResult<Product>>("/products", { pageSize: 100 })
+    ]);
+    if (generation !== this.generation) return false;
+    this.update(draft => { draft.customers = customers.items; draft.opportunities = opportunities.items; draft.followUps = followUps.items; draft.products = products.items; });
+    return true;
   }
-
-  public reset() {
-    this.state = structuredClone(INITIAL_CRM_STATE);
-    this.isHydrated = true;
-    this.persist();
-    this.notify();
-  }
-
-  private persist() {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-      } catch (err) {
-        console.error("Failed to persist SewTec CRM state to localStorage", err);
-      }
-    }
-  }
-
-  private notify() {
-    this.listeners.forEach((listener) => {
-      try {
-        listener();
-      } catch (err) {
-        console.error("Error in CrmStore listener", err);
-      }
+  public async refreshCustomer(id: string) {
+    const generation = this.generation;
+    const [customer, activities, interactions] = await Promise.all([
+      apiClient.get<Customer>(`/customers/${id}`), apiClient.get<Activity[]>(`/activities/customer/${id}`), apiClient.get<Interaction[]>(`/interactions/customer/${id}`)
+    ]);
+    if (generation !== this.generation) return;
+    this.update(draft => {
+      draft.customers = [...draft.customers.filter(c => c.id !== id), customer];
+      draft.activities = [...draft.activities.filter(a => a.customerId !== id), ...activities];
+      draft.interactions = [...draft.interactions.filter(i => i.customerId !== id), ...interactions];
     });
   }
+  public getSnapshot = (): CrmState => this.state;
+  public subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
+  public update(mutator: (draft: CrmState) => void) { const next = structuredClone(this.state); mutator(next); this.state = next; this.notify(); }
+  public reset() {
+    if (typeof window !== "undefined") throw new Error("Demo reset is unavailable in the application.");
+    this.state = structuredClone(INITIAL_CRM_STATE); this.notify();
+  }
+  private notify() { this.listeners.forEach(listener => listener()); }
 }
-
 export const crmStore = new CrmStore();

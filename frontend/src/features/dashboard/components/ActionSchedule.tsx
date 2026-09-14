@@ -52,7 +52,7 @@ export function ActionSchedule({
   const getChannelIcon = (channel: string) => {
     switch (channel) {
       case "call":
-        return <PhoneCall className="h-3.5 w-3.5 text-blue-600" />;
+        return <PhoneCall className="h-3.5 w-3.5 text-red-600" />;
       case "visit":
         return <Building2 className="h-3.5 w-3.5 text-purple-600" />;
       case "whatsapp":
@@ -74,18 +74,18 @@ export function ActionSchedule({
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-2xs space-y-4">
+    <div className="surface-card p-5 shadow-2xs space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-blue-600" />
+          <Calendar className="h-5 w-5 text-red-600" />
           <h2 className="font-bold text-base text-slate-900">
             جدول العمل المباشر اليوم
           </h2>
         </div>
         <Link
           href="/follow-ups"
-          className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+          className="text-xs font-semibold text-red-700 dark:text-red-300 hover:text-red-800 dark:hover:text-red-200 flex items-center gap-1 transition-colors"
         >
           <span>عرض كل المتابعات</span>
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -145,7 +145,7 @@ export function ActionSchedule({
                           <span>•</span>
                           <Link
                             href={`/customers/${fu.customerId}`}
-                            className="font-bold text-slate-900 hover:text-blue-600 transition-colors"
+                            className="font-bold text-slate-900 hover:text-red-600 transition-colors"
                           >
                             {fu.customerName}
                           </Link>
@@ -209,7 +209,7 @@ export function ActionSchedule({
                           <span>•</span>
                           <Link
                             href={`/customers/${fu.customerId}`}
-                            className="font-bold text-slate-900 hover:text-blue-600 transition-colors"
+                            className="font-bold text-slate-900 hover:text-red-600 transition-colors"
                           >
                             {fu.customerName}
                           </Link>

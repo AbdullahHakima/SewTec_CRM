@@ -22,6 +22,7 @@ export interface CreateOpportunityInput {
 }
 
 export interface UpdateOpportunityInput {
+  revision?: string;
   title?: string;
   machineModel?: string;
   quantity?: number;

@@ -1,8 +1,10 @@
-"use client";
+﻿"use client";
+import { ModalOverlay } from "@/components/ui/modal-overlay";
 
 import React, { useState } from "react";
 import { crmStore } from "@/lib/storage/crm-store";
 import { AlertTriangle, RotateCcw, X, Check } from "lucide-react";
+import { apiClient } from "@/infrastructure/http/api-client";
 
 interface ResetDemoDialogProps {
   open: boolean;
@@ -20,22 +22,31 @@ export function ResetDemoDialog({
 
   if (!open) return null;
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setResetting(true);
+
+    try {
+      if (typeof window !== "undefined" && apiClient.getToken()) {
+        await apiClient.post("/demo/reset");
+      }
+    } catch (err) {
+      console.warn("Could not reset backend DB, continuing with local store reset", err);
+    }
+
+    crmStore.reset();
+    await crmStore.syncWithBackend();
+
+    setResetting(false);
+    setDone(true);
     setTimeout(() => {
-      crmStore.reset();
-      setResetting(false);
-      setDone(true);
-      setTimeout(() => {
-        setDone(false);
-        if (onSuccess) onSuccess();
-        onClose();
-      }, 1000);
-    }, 400);
+      setDone(false);
+      if (onSuccess) onSuccess();
+      onClose();
+    }, 1000);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+    <ModalOverlay label="إعادة ضبط البيانات التجريبية" onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150 text-right">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-rose-50/50">
@@ -59,7 +70,7 @@ export function ResetDemoDialog({
             سيتم حذف جميع التعديلات والمكالمات المسجلة والمتابعات المنجزة، وإعادة قاعدة بيانات فرع المحلة الكبرى إلى **حالتها الأصلية المعتمدة**.
           </p>
           <div className="rounded-md bg-slate-50 border border-slate-200 p-2.5 text-[11px] text-slate-500">
-            يتضمن ذلك استعادة عملاء التجربة (مصنع النور، شركة الصفوة، ورشة المستقبل، إلخ) ومتابعات الصباح المحددة مسبقاً.
+            يتضمن ذلك استعادة عملاء التجربة (مصنع النور، شركة الصفوة، ورشة المستقبل، إلخ) ومتابعات الصباح المحددة مسبقاً في قاعدة بيانات الخادم.
           </div>
         </div>
 
@@ -81,7 +92,7 @@ export function ResetDemoDialog({
             {done ? (
               <>
                 <Check className="h-4 w-4 text-white" />
-                <span>تمت الإعادة بنجاح ✓</span>
+                <span>تمت الإعادة بنجاح</span>
               </>
             ) : resetting ? (
               <span>جاري الاستعادة...</span>
@@ -94,6 +105,6 @@ export function ResetDemoDialog({
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

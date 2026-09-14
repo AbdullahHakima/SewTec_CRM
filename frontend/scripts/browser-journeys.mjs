@@ -1,0 +1,57 @@
+import { chromium, expect } from '@playwright/test';
+import fs from 'node:fs/promises';
+const base = process.env.AUDIT_URL || 'http://127.0.0.1:3100';
+const browser = await chromium.launch({channel:'msedge'});
+const context = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,locale:'ar-EG',timezoneId:'Africa/Cairo'});
+const page = await context.newPage();
+const results=[];
+try {
+ const login=await context.request.post(base+'/api/auth/login',{data:{username:'admin',password:'admin123'}});
+ expect(login.ok()).toBeTruthy(); const auth=await login.json();
+ await context.addInitScript(auth=>{localStorage.setItem('sewtec_crm_token_v1',auth.token);localStorage.setItem('sewtec_crm_user_v1',JSON.stringify({id:auth.userId,username:auth.username,fullName:auth.fullName,role:auth.role,branchId:auth.branchId}));},auth);
+ await page.goto(base+'/customers');
+ await page.getByRole('button',{name:'إضافة عميل جديد',exact:true}).first().click();
+ const name='اختبار حفظ '+Date.now(); const phone='015'+String(Date.now()).slice(-8);
+ await page.locator('#customerdrawer-field-1').fill(name);
+ await page.locator('#customerdrawer-field-4').fill(phone);
+ let rejectSave=true;
+ await page.route('**/api/customers',async route=>{
+   if(route.request().method()==='POST'&&rejectSave){rejectSave=false;await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'تعذر الحفظ مؤقتاً. حاول مرة أخرى.'})});}
+   else await route.continue();
+ });
+ await page.getByRole('button',{name:'حفظ العميل',exact:true}).click();
+ await expect(page.getByRole('dialog')).toBeVisible();
+ await expect(page.locator('#customerdrawer-field-1')).toHaveValue(name);
+ await expect(page.getByText('تعذر الحفظ مؤقتاً. حاول مرة أخرى.',{exact:true})).toBeVisible();
+ results.push('Failed save preserves form and displays server error');
+ const savedResponse=page.waitForResponse(r=>r.url().endsWith('/api/customers')&&r.request().method()==='POST'&&r.status()===201);
+ await page.getByRole('button',{name:'حفظ العميل',exact:true}).click();
+ const customer=await (await savedResponse).json();
+ await page.goto(base+'/customers/'+customer.id);
+ await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+ await page.reload(); await expect(page.getByRole('heading',{name,exact:true})).toBeVisible();
+ results.push('Create persists after fresh navigation and reload');
+ await page.getByRole('button',{name:'تعديل البيانات وإدارة الماكينات'}).click();
+ await page.getByRole('textbox',{name:/^ملاحظات/}).fill('ملاحظة مثبتة بعد إعادة التحميل');
+ await page.getByRole('button',{name:'حفظ بيانات العميل',exact:true}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.reload();
+ await page.getByRole('button',{name:'تعديل البيانات وإدارة الماكينات'}).click();
+ await expect(page.getByRole('textbox',{name:/^ملاحظات/})).toHaveValue('ملاحظة مثبتة بعد إعادة التحميل');
+ results.push('Customer edit persists after reload');
+ await page.getByText('إضافة ماكينة إلى أسطول العميل',{exact:true}).click();
+ await page.getByLabel('الموديل',{exact:true}).fill('JACK browser verification');
+ await page.getByLabel('العدد',{exact:true}).fill('2');
+ await page.getByRole('button',{name:'حفظ الماكينة',exact:true}).click();
+ await expect(page.getByRole('dialog')).toHaveCount(0);
+ const fresh=await context.request.get(base+'/api/customers/'+customer.id,{headers:{Authorization:'Bearer '+auth.token}});
+ const record=await fresh.json(); expect(record.installedMachines.some(m=>m.model==='JACK browser verification'&&m.quantity===2)).toBeTruthy();
+ results.push('Installed machine quantity persisted exactly once');
+ const second=await context.newPage(); await second.goto(base+'/customers/'+customer.id); await expect(second.getByRole('heading',{name,exact:true})).toBeVisible();
+ await page.evaluate(()=>localStorage.removeItem('sewtec_crm_token_v1'));
+ await expect(second.locator('#workspace')).toHaveCount(0);
+ results.push('Cross-tab logout removes authenticated workspace');
+ await fs.mkdir('../artifacts/browser',{recursive:true});
+ await fs.writeFile('../artifacts/browser/journeys.json',JSON.stringify({profile:'Edge mobile emulation 390x844, Arabic, Africa/Cairo, isolated seeded SQLite',results},null,2));
+ console.log(JSON.stringify(results));
+} finally {await browser.close();}

@@ -1,3 +1,4 @@
+import { HttpOpportunityRepository } from "../http/http-opportunity.repository";
 import { crmStore } from "@/lib/storage/crm-store";
 import { Opportunity, OpportunityStage } from "@/types/crm";
 import {
@@ -6,6 +7,7 @@ import {
   OpportunityQuery,
   UpdateOpportunityInput,
 } from "@/features/opportunities/repositories/opportunity.repository";
+import { apiClient } from "@/infrastructure/http/api-client";
 
 export class LocalStorageOpportunityRepository implements IOpportunityRepository {
   async getAll(query?: OpportunityQuery): Promise<Opportunity[]> {
@@ -44,6 +46,28 @@ export class LocalStorageOpportunityRepository implements IOpportunityRepository
   }
 
   async create(input: CreateOpportunityInput): Promise<Opportunity> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const created = await apiClient.post<Opportunity>("/opportunities", input);
+        crmStore.update((state) => {
+          const idx = state.opportunities.findIndex((o) => o.id === created.id);
+          if (idx === -1) {
+            state.opportunities.unshift(created);
+          } else {
+            state.opportunities[idx] = created;
+          }
+
+          const customer = state.customers.find((c) => c.id === input.customerId);
+          if (customer && created.estimatedValue) {
+            customer.openPipelineValue = (customer.openPipelineValue || 0) + created.estimatedValue;
+          }
+        });
+        return created;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     const newOpportunity: Opportunity = {
       id: `op_${Date.now()}`,
       branchId: "mahalla",
@@ -96,6 +120,41 @@ export class LocalStorageOpportunityRepository implements IOpportunityRepository
     stage: OpportunityStage,
     note?: string
   ): Promise<Opportunity> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const updated = await apiClient.patch<Opportunity>(`/opportunities/${id}/stage`, {
+          stage,
+          note,
+        });
+
+        crmStore.update((state) => {
+          const idx = state.opportunities.findIndex((o) => o.id === id);
+          if (idx !== -1) {
+            const prev = state.opportunities[idx];
+            state.opportunities[idx] = updated;
+
+            const customer = state.customers.find((c) => c.id === updated.customerId);
+            if (customer && updated.estimatedValue) {
+              if (stage === "won" && prev.stage !== "won") {
+                customer.lifetimeSales = (customer.lifetimeSales || 0) + updated.estimatedValue;
+                customer.openPipelineValue = Math.max(0, (customer.openPipelineValue || 0) - updated.estimatedValue);
+              } else if (prev.stage === "won" && stage !== "won") {
+                customer.lifetimeSales = Math.max(0, (customer.lifetimeSales || 0) - updated.estimatedValue);
+                customer.openPipelineValue = (customer.openPipelineValue || 0) + updated.estimatedValue;
+              } else if (stage === "lost" && prev.stage !== "lost") {
+                customer.openPipelineValue = Math.max(0, (customer.openPipelineValue || 0) - updated.estimatedValue);
+              } else if (prev.stage === "lost" && stage !== "lost") {
+                customer.openPipelineValue = (customer.openPipelineValue || 0) + updated.estimatedValue;
+              }
+            }
+          }
+        });
+        return updated;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     let updated: Opportunity | null = null;
 
     crmStore.update((state) => {
@@ -147,6 +206,21 @@ export class LocalStorageOpportunityRepository implements IOpportunityRepository
   }
 
   async update(id: string, input: UpdateOpportunityInput): Promise<Opportunity> {
+    if (typeof window !== "undefined" && apiClient.getToken()) {
+      try {
+        const updated = await apiClient.put<Opportunity>(`/opportunities/${id}`, input);
+        crmStore.update((state) => {
+          const idx = state.opportunities.findIndex((o) => o.id === id);
+          if (idx !== -1) {
+            state.opportunities[idx] = updated;
+          }
+        });
+        return updated;
+      } catch (err) {
+        console.warn("Backend request failed, falling back to local store", err);
+      }
+    }
+
     let updated: Opportunity | null = null;
 
     crmStore.update((state) => {
@@ -165,4 +239,4 @@ export class LocalStorageOpportunityRepository implements IOpportunityRepository
   }
 }
 
-export const opportunityRepository = new LocalStorageOpportunityRepository();
+export const opportunityRepository = typeof window === "undefined" ? new LocalStorageOpportunityRepository() : new HttpOpportunityRepository();
