@@ -26,7 +26,7 @@ interface RolesTabProps {
   users: UserRecord[];
   onOpenAddUserDialog: () => void;
   onUserSaved: () => void;
-  onDeleteUser: (id: string, name: string) => void;
+  onDeleteUser: (user: UserRecord) => void;
 }
 
 export function RolesTab({ users, onOpenAddUserDialog, onDeleteUser, onUserSaved }: RolesTabProps) {
@@ -108,22 +108,37 @@ export function RolesTab({ users, onOpenAddUserDialog, onDeleteUser, onUserSaved
                   </td>
 
                   <td className="p-3">
-                    <span className="flex items-center gap-1 text-emerald-600 font-semibold text-[11px]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                      نشط
-                    </span>
+                    {u.isActive !== false ? (
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                        نشط
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-stone-400 dark:text-stone-500 font-semibold text-[11px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-stone-400" />
+                        معطل
+                      </span>
+                    )}
                   </td>
 
                   <td className="p-3 text-center">
-                    <button onClick={()=>setEditing(u)} className="rounded-lg border px-3 py-2 text-sm">تعديل</button>
+                    <div className="flex items-center justify-center gap-1.5">
                       <button
-                      type="button"
-                      onClick={() => onDeleteUser(u.id, u.fullName)}
-                      title="حذف المستخدم"
-                      className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                        type="button"
+                        onClick={()=>setEditing(u)}
+                        className="rounded-lg border border-stone-200 dark:border-stone-700 px-2.5 py-1 text-xs hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                      >
+                        تعديل
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteUser(u)}
+                        title="حذف المستخدم"
+                        className="rounded-lg p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

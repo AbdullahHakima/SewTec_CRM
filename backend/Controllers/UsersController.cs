@@ -75,7 +75,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<ActionResult<UserDto>> UpdateUser(string id, [FromBody] UpdateUserRequest request)
+    public async Task<ActionResult<UserDto>> UpdateUser(string id, [FromBody] UpdateUserRequest request, [FromQuery] string? reassignToUserId = null)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user == null)
@@ -86,7 +86,22 @@ public class UsersController : ControllerBase
         if (user.IsActive && user.Role == "admin" && (request.Role == "rep" || request.IsActive == false) && await _context.Users.CountAsync(u => u.Role == "admin" && u.IsActive) <= 1)
             return BadRequest(new { message = "لا يمكن تعطيل آخر مسؤول في الفرع." });
         if (request.IsActive == false && await _context.Customers.AnyAsync(c => c.AssignedRepId == id))
-            return BadRequest(new { message = "أعد توزيع العملاء قبل تعطيل المستخدم." });
+        {
+            if (string.IsNullOrWhiteSpace(reassignToUserId))
+            {
+                return BadRequest(new { message = "أعد توزيع العملاء قبل تعطيل المستخدم." });
+            }
+
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == reassignToUserId && u.IsActive && u.Id != id);
+            if (targetUser == null)
+                return BadRequest(new { message = "المندوب المستهدف لإعادة التوزيع غير موجود أو غير نشط." });
+
+            foreach (var customer in await _context.Customers.Where(c => c.AssignedRepId == user.Id).ToListAsync())
+            {
+                customer.AssignedRepId = targetUser.Id;
+                customer.AssignedRepName = targetUser.FullName;
+            }
+        }
         if (request.IsActive.HasValue) user.IsActive = request.IsActive.Value;
         user.SessionVersion = Guid.NewGuid().ToString("N");
         if (!string.IsNullOrWhiteSpace(request.FullName) && request.FullName.Trim() != user.FullName)
@@ -115,7 +130,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteUser(string id)
+    public async Task<IActionResult> DeleteUser(string id, [FromQuery] string? reassignToUserId = null)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user == null)
@@ -130,8 +145,54 @@ public class UsersController : ControllerBase
             }
         }
 
-        if (await _context.Customers.AnyAsync(c => c.AssignedRepId == id) || await _context.Opportunities.AnyAsync(o => o.AssignedRepId == id) || await _context.FollowUps.AnyAsync(f => f.AssignedRepId == id))
-            return BadRequest(new { message = "أعد توزيع العملاء والعمل المفتوح قبل حذف المستخدم." });
+        var customers = await _context.Customers.Where(c => c.AssignedRepId == id).ToListAsync();
+        var opportunities = await _context.Opportunities.Where(o => o.AssignedRepId == id).ToListAsync();
+        var followUps = await _context.FollowUps.Where(f => f.AssignedRepId == id).ToListAsync();
+        var hasWork = customers.Count > 0 || opportunities.Count > 0 || followUps.Count > 0;
+
+        if (hasWork)
+        {
+            if (string.IsNullOrWhiteSpace(reassignToUserId))
+            {
+                return BadRequest(new {
+                    message = "المستخدم لديه عملاء أو أعمال مفتوحة. اختر مندوباً لإعادة التوزيع إليه قبل الحذف، أو عطل الحساب.",
+                    requiresReassignment = true,
+                    assignedCustomersCount = customers.Count,
+                    assignedOpportunitiesCount = opportunities.Count,
+                    assignedFollowUpsCount = followUps.Count
+                });
+            }
+
+            if (reassignToUserId == id)
+            {
+                return BadRequest(new { message = "لا يمكن إعادة توزيع الأعمال لنفس المستخدم المراد حذفه." });
+            }
+
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == reassignToUserId && u.IsActive);
+            if (targetUser == null)
+            {
+                return BadRequest(new { message = "المندوب المستهدف لإعادة التوزيع غير موجود أو غير نشط." });
+            }
+
+            foreach (var c in customers)
+            {
+                c.AssignedRepId = targetUser.Id;
+                c.AssignedRepName = targetUser.FullName;
+            }
+
+            foreach (var o in opportunities)
+            {
+                o.AssignedRepId = targetUser.Id;
+                o.AssignedRepName = targetUser.FullName;
+            }
+
+            foreach (var f in followUps)
+            {
+                f.AssignedRepId = targetUser.Id;
+                f.AssignedRepName = targetUser.FullName;
+            }
+        }
+
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
 

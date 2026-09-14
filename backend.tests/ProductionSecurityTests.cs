@@ -154,4 +154,27 @@ public class ProductionSecurityTests
         Assert.Equal(2, await fresh.Interactions.CountAsync(i => i.CustomerId == "c0"));
         Assert.Equal(2, await fresh.Activities.CountAsync(a => a.CustomerId == "c0"));
     }
+
+    [Fact]
+    public async Task DeleteUser_WithReassignment_TransfersWorkAndRemovesUser()
+    {
+        using var app = new CrmFactory(); await app.Seed();
+        using var admin = await app.Login("admin-a");
+
+        // Attempt delete without reassignment -> fails because rep-a has assigned work
+        var failDelete = await admin.DeleteAsync("/api/users/rep-a");
+        Assert.Equal(HttpStatusCode.BadRequest, failDelete.StatusCode);
+
+        // Deactivate with reassignment to admin-a -> succeeds
+        var deactivateWithReassign = await admin.PutAsJsonAsync("/api/users/rep-a?reassignToUserId=admin-a", new { isActive = false });
+        Assert.Equal(HttpStatusCode.OK, deactivateWithReassign.StatusCode);
+
+        // Delete rep-a with reassignment to admin-a -> succeeds
+        var successDelete = await admin.DeleteAsync("/api/users/rep-a?reassignToUserId=admin-a");
+        Assert.Equal(HttpStatusCode.OK, successDelete.StatusCode);
+
+        using var db = app.OpenDb();
+        Assert.Null(await db.Users.FirstOrDefaultAsync(u => u.Id == "rep-a"));
+        Assert.All(await db.Customers.Where(c => c.AssignedRepId == "admin-a").ToListAsync(), c => Assert.Equal("admin-a", c.AssignedRepId));
+    }
 }

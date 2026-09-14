@@ -6,6 +6,7 @@ import { MentoringTab, TeamSummary, MentoringNote } from "./MentoringTab";
 import { RolesTab, UserRecord } from "./RolesTab";
 import { BranchTab } from "./BranchTab";
 import { AddUserDialog } from "./AddUserDialog";
+import { DeleteUserDialog } from "./DeleteUserDialog";
 import { MentoringNoteDialog } from "./MentoringNoteDialog";
 import { apiClient } from "@/infrastructure/http/api-client";
 import { useAuth } from "@/lib/auth/auth-context";
@@ -14,6 +15,7 @@ export function SettingsScreen() {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<"mentoring" | "roles" | "branch">("mentoring");
   const [addUserDialogOpen, setAddUserDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<UserRecord | null>(null);
   const [mentoringDialogOpen, setMentoringDialogOpen] = useState(false);
   const [selectedRepForMentoring, setSelectedRepForMentoring] = useState<string>("");
   const [selectedRepIdForMentoring, setSelectedRepIdForMentoring] = useState<string>("");
@@ -46,14 +48,8 @@ export function SettingsScreen() {
     return () => clearTimeout(timer);
   }, [loadData]);
 
-  const handleDeleteUser = async (id: string, name: string) => {
-    if (!confirm(`هل أنت متأكد من رغبتك في حذف المستخدم "${name}"؟`)) return;
-    try {
-      await apiClient.delete(`/users/${id}`);
-      await loadData();
-    } catch (err) {
-      setError((err instanceof Error ? err.message : "") || "تعذر حذف المستخدم. راجع توزيع أعماله ثم حاول مرة أخرى.");
-    }
+  const handleDeleteUser = (user: UserRecord) => {
+    setUserToDelete(user);
   };
 
   const handleAddMentoringNote = async (note: { repId: string; type: string; message: string; date: string }) => {
@@ -176,6 +172,15 @@ export function SettingsScreen() {
         onClose={() => setAddUserDialogOpen(false)}
         onSuccess={loadData}
       />
+
+      {userToDelete && (
+        <DeleteUserDialog
+          user={userToDelete}
+          availableUsers={users}
+          onClose={() => setUserToDelete(null)}
+          onDeleted={loadData}
+        />
+      )}
 
       <MentoringNoteDialog
         open={mentoringDialogOpen}
