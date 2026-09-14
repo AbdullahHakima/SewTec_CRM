@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: sewtec-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: AllowedHosts
+        value: sewtec-backend.onrender.com;localhost;127.0.0.1
+      - key: Jwt__Key
+        generateValue: true
+      - key: Demo__Enabled
+        value: "false"
+      - key: Bootstrap__Username
+        value: admin
+      - key: Bootstrap__Password
+        value: AdminPassword123!
+      - key: Bootstrap__FullName
+        value: System Admin
+      - key: Bootstrap__BranchId
+        value: B1

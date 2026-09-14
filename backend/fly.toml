@@ -1,0 +1,38 @@
+# fly.toml app configuration file for SewTec CRM Backend
+# See https://fly.io/docs/reference/configuration/ for details
+
+app = "sewtec-crm-api"
+primary_region = "ams"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source = "crm_data"
+  destination = "/app/data"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  ConnectionStrings__DefaultConnection = "Data Source=/app/data/sewtec_crm.db"
+  AllowedHosts = "sewtec-crm-api.fly.dev;localhost;127.0.0.1"
+  Demo__Enabled = "false"
+
+[http_service]
+  internal_port = 5018
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

@@ -169,20 +169,21 @@ export function CustomerCards({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <a
                   href={`https://wa.me/${waNumber}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition"
+                  className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition"
                   title="محادثة واتساب"
+                  aria-label={`محادثة واتساب مع ${customer.name}`}
                 >
                   <MessageCircle size={15} />
                 </a>
 
                 <button
                   onClick={() => onAddFollowUp(customer)}
-                  className="rounded-lg bg-stone-100 p-1.5 text-zinc-600 hover:bg-red-50 hover:text-red-600 transition"
+                  className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800 text-zinc-600 dark:text-zinc-300 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 dark:hover:text-red-400 transition"
                   title={`جدولة متابعة مع ${customer.name}`}
                   aria-label={`جدولة متابعة مع ${customer.name}`}
                 >
@@ -191,7 +192,7 @@ export function CustomerCards({
 
                 <Link
                   href={`/customers/${customer.id}`}
-                  className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 transition"
+                  className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 transition"
                   title={`عرض ملف ${customer.name}`}
                   aria-label={`عرض ملف ${customer.name}`}
                 >

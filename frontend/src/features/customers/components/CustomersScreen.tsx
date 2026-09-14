@@ -46,30 +46,29 @@ export function CustomersScreen() {
 
   return (
     <div className="space-y-4">
-      <ListStatus {...list} />
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-red-600/20">
             <Users className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">دليل العملاء</h1>
-            <p className="text-xs text-slate-500">
+            <h1 className="text-xl font-bold text-slate-900 dark:text-stone-100">دليل العملاء</h1>
+            <p className="text-xs text-slate-500 dark:text-stone-400">
               إدارة العملاء والمصانع ومتابعة بيانات التواصل
             </p>
           </div>
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           <div className="flex items-center rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-1 shadow-2xs" role="group" aria-label="طريقة عرض العملاء">
-            <button aria-label="عرض جدول" aria-pressed={layout === "table"} onClick={() => setLayout("table")} className={`rounded-lg p-2 transition ${layout === "table" ? "bg-primary text-white" : "text-zinc-400 hover:bg-stone-100"}`}><List size={16} /></button>
-            <button aria-label="عرض بطاقات" aria-pressed={layout === "cards"} onClick={() => setLayout("cards")} className={`rounded-lg p-2 transition ${layout === "cards" ? "bg-primary text-white" : "text-zinc-400 hover:bg-stone-100"}`}><LayoutGrid size={16} /></button>
+            <button aria-label="عرض جدول" aria-pressed={layout === "table"} onClick={() => setLayout("table")} className={`rounded-lg p-2 transition ${layout === "table" ? "bg-primary text-white" : "text-zinc-400 hover:bg-stone-100 dark:hover:bg-stone-800"}`}><List size={16} /></button>
+            <button aria-label="عرض بطاقات" aria-pressed={layout === "cards"} onClick={() => setLayout("cards")} className={`rounded-lg p-2 transition ${layout === "cards" ? "bg-primary text-white" : "text-zinc-400 hover:bg-stone-100 dark:hover:bg-stone-800"}`}><LayoutGrid size={16} /></button>
           </div>
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-red-600/20 hover:bg-red-700 transition-colors"
           >
             <Plus className="h-4 w-4" />
             <span>إضافة عميل جديد</span>
@@ -114,6 +113,8 @@ export function CustomersScreen() {
               onResetFilters={handleResetFilters}
             />
           </div>
+
+          <ListStatus {...list} />
         </>
       )}
 

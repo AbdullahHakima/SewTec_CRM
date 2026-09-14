@@ -91,30 +91,40 @@ input, select, textarea { accent-color: #dc2626; }
 ::selection { background: #fecaca; color: #7f1d1d; }
 @keyframes workspace-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @media (max-width: 767px) {
   .crm-sidebar, .is-collapsed.crm-sidebar {
     position: fixed;
     top: auto;
     bottom: 0;
+    right: 0;
+    left: 0;
     width: 100%;
-    height: 70px;
+    height: calc(66px + env(safe-area-inset-bottom));
     border: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(23, 23, 27, 0.94);
+    background: rgba(23, 23, 27, 0.96);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     padding-bottom: env(safe-area-inset-bottom);
     z-index: 40;
   }
   .sidebar-brand, .crm-sidebar > .sidebar-expanded, .sidebar-footer { display: none; }
-  .sidebar-nav { flex-direction: row; justify-content: space-around; gap: 4px; padding: 6px 8px; }
+  .sidebar-nav { flex-direction: row; justify-content: space-around; gap: 2px; padding: 4px 6px; }
   .sidebar-link, .is-collapsed .sidebar-link {
     position: relative;
     flex: 1;
     flex-direction: column;
-    gap: 3px;
+    gap: 2px;
     border: 0;
-    padding: 6px 2px;
+    padding: 5px 2px;
     font-size: 10px;
     font-weight: 600;
     border-radius: 10px;
@@ -123,12 +133,12 @@ input, select, textarea { accent-color: #dc2626; }
   }
   .sidebar-link .sidebar-badge {
     position: absolute;
-    top: 4px;
-    right: calc(50% - 16px);
-    min-width: 17px;
-    height: 17px;
-    line-height: 17px;
-    padding: 0 4px;
+    top: 2px;
+    right: calc(50% - 15px);
+    min-width: 16px;
+    height: 16px;
+    line-height: 16px;
+    padding: 0 3px;
     border-radius: 9999px;
     font-size: 9px;
     font-weight: 700;
@@ -140,10 +150,12 @@ input, select, textarea { accent-color: #dc2626; }
   }
   .is-collapsed .sidebar-label { display: block; }
   .sidebar-link .sidebar-expanded { display: none; }
-  .workspace { padding-bottom: 96px; }
-  .crm-topbar { height: 64px; gap: 8px; }
+  .workspace { padding-bottom: calc(100px + env(safe-area-inset-bottom)); }
+  .crm-topbar { height: 58px; gap: 8px; padding-inline: 12px; }
   .crm-topbar > div:last-child { gap: 6px; }
-  .crm-topbar .profile-summary, .crm-topbar .toolbar-divider { display: none; }
+  .crm-topbar .toolbar-divider { display: none; }
+  .crm-topbar .profile-name-role { display: none; }
+  .crm-topbar .profile-summary { border-right: 0; padding-right: 0; }
   .crm-topbar .quick-action-label { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {

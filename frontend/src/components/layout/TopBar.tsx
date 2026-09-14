@@ -44,27 +44,27 @@ export function TopBar({ onQuickAction }: { onQuickAction?: (action: QuickAction
         <div className="flex-1 max-w-lg">
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-3.5 py-2.5 text-right text-xs text-zinc-500 transition hover:border-stone-300 hover:bg-white dark:border-stone-800 dark:bg-stone-900/60 dark:text-zinc-400"
+            className="flex w-full items-center justify-between gap-2 sm:gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-2.5 sm:px-3.5 py-1.5 sm:py-2.5 text-right text-xs text-zinc-500 transition hover:border-stone-300 hover:bg-white dark:border-stone-800 dark:bg-stone-900/60 dark:text-zinc-400"
           >
-            <span className="flex min-w-0 items-center gap-2.5">
-              <Search size={16} className="shrink-0" />
-              <span className="truncate">ابحث عن عميل، هاتف أو ماكينة...</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <Search size={15} className="shrink-0 text-zinc-400" />
+              <span className="truncate text-[11px] sm:text-xs">ابحث عن عميل، هاتف أو ماكينة...</span>
             </span>
             <kbd dir="ltr" className="hidden shrink-0 rounded-md border border-stone-200 bg-white px-1.5 py-0.5 text-[10px] text-zinc-400 dark:border-stone-700 dark:bg-stone-800 sm:block">
               Ctrl K
             </kbd>
           </button>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
 
           {/* New Action Dropdown */}
           <DropdownMenu dir="rtl" modal={false} onOpenChange={(open) => { if (open) selectedAction.current = false; }}>
             <DropdownMenuTrigger asChild>
-              <Button ref={actionTrigger} aria-label="إجراء جديد" className="h-10 rounded-xl px-4">
+              <Button ref={actionTrigger} aria-label="إجراء جديد" className="h-9 sm:h-10 rounded-xl px-2.5 sm:px-4">
                 <Plus size={16} />
-                <span className="quick-action-label">إجراء جديد</span>
-                <ChevronDown size={13} className="opacity-60" />
+                <span className="quick-action-label hidden sm:inline mr-1">إجراء جديد</span>
+                <ChevronDown size={13} className="opacity-60 hidden sm:inline" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={10} className="w-64 rounded-2xl p-2 shadow-xl" onCloseAutoFocus={(event) => { if (selectedAction.current) event.preventDefault(); }}>
@@ -95,8 +95,8 @@ export function TopBar({ onQuickAction }: { onQuickAction?: (action: QuickAction
           {/* Overdue Notification Link */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Link href="/follow-ups?view=overdue" aria-label={`المتابعات المتأخرة: ${counts.overdue}`} className="relative rounded-xl p-2 text-zinc-500 transition hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-stone-800">
-                <Bell size={20} strokeWidth={1.7} />
+              <Link href="/follow-ups?view=overdue" aria-label={`المتابعات المتأخرة: ${counts.overdue}`} className="relative rounded-xl p-1.5 sm:p-2 text-zinc-500 transition hover:bg-stone-100 dark:text-zinc-400 dark:hover:bg-stone-800">
+                <Bell size={18} strokeWidth={1.7} className="sm:w-5 sm:h-5" />
                 {counts.overdue > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white dark:ring-stone-900">
                     {counts.overdue}
@@ -112,12 +112,12 @@ export function TopBar({ onQuickAction }: { onQuickAction?: (action: QuickAction
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="profile-summary flex items-center gap-3 border-r border-stone-200 pr-4 text-right transition hover:opacity-80 dark:border-stone-800"
+                className="profile-summary flex items-center gap-2 sm:gap-3 border-r-0 sm:border-r border-stone-200 pr-0 sm:pr-4 text-right transition hover:opacity-80 dark:border-stone-800"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-sm font-bold text-zinc-700 dark:border-stone-700 dark:bg-stone-800 dark:text-zinc-200">
+                <span className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-stone-200 bg-stone-100 text-xs sm:text-sm font-bold text-zinc-700 dark:border-stone-700 dark:bg-stone-800 dark:text-zinc-200">
                   {userInitials}
                 </span>
-                <div className="hidden flex-col text-right sm:flex">
+                <div className="profile-name-role hidden flex-col text-right sm:flex">
                   <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
                     {user?.fullName || ""}
                   </span>
@@ -125,7 +125,7 @@ export function TopBar({ onQuickAction }: { onQuickAction?: (action: QuickAction
                     {userRoleText}
                   </span>
                 </div>
-                <ChevronDown size={13} className="opacity-50" />
+                <ChevronDown size={13} className="opacity-50 hidden sm:block" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" sideOffset={8} className="w-56 rounded-2xl p-2 shadow-xl">
